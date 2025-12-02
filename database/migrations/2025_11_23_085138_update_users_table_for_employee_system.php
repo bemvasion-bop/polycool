@@ -29,20 +29,44 @@ return new class extends Migration
             $table->string('province')->nullable();
             $table->string('postal_code')->nullable();
 
-            // Work-related
-            $table->string('position_title')->nullable();
-            $table->enum('employee_status', ['active', 'inactive'])->default('active');
-            $table->enum('role', ['owner','manager','employee'])->default('employee');
+            // Position (for HR only — not access role)
+            $table->string('position_title')->nullable()->change();
 
-            // Replace name column
+            // Employee account status
+            $table->enum('employee_status', ['active', 'inactive'])
+                  ->default('active');
+
+            // 🔥 NEW unified system roles
+            $table->enum('system_role', ['owner','manager','employee','accounting','audit'])
+                  ->default('employee')
+                  ->after('employee_status');
+
+            // Allow name to be nullable
             $table->string('name')->nullable()->change();
+
+            // 🔥 SAFE DROP ROLE — only if it exists
+            if (Schema::hasColumn('users', 'role')) {
+                $table->dropColumn('role');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // Drop all added fields
+
+            // restore old role field if rollback occurs
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->enum('role', ['owner','manager','employee'])
+                      ->default('employee');
+            }
+
+            // remove new system_role
+            if (Schema::hasColumn('users', 'system_role')) {
+                $table->dropColumn('system_role');
+            }
+
+            // drop additional fields
             $table->dropColumn([
                 'given_name',
                 'middle_name',
@@ -57,7 +81,6 @@ return new class extends Migration
                 'postal_code',
                 'position_title',
                 'employee_status',
-                'role',
             ]);
         });
     }

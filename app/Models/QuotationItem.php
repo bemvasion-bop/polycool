@@ -9,14 +9,11 @@ class QuotationItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
+   protected $fillable = [
         'quotation_id',
-        'description',
-        'unit',
-        'quantity',
-        'unit_price',
-        'line_total',
-        'sort_order',
+        'substrate',
+        'thickness',
+        'volume',
     ];
 
     public function quotation()

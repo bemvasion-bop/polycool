@@ -20,5 +20,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //
+        view()->composer('*', function ($view) {
+            $pendingExpensesCount = \App\Models\Expense::where('status', 'pending')->count();
+            $view->with('pendingExpensesCount', $pendingExpensesCount);
+        });
     }
+
+    
 }

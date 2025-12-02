@@ -13,14 +13,12 @@ return new class extends Migration
     {
         Schema::create('quotation_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('quotation_id')->constrained()->cascadeOnDelete();
 
-            $table->string('description');
-            $table->string('unit')->nullable();   // e.g. sqm, liters, pcs
-            $table->decimal('quantity', 12, 2)->default(1);
-            $table->decimal('unit_price', 12, 2)->default(0);
-            $table->decimal('line_total', 12, 2)->default(0);
-            $table->unsignedInteger('sort_order')->default(0);
+            $table->foreignId('quotation_id')->constrained()->onDelete('cascade');
+
+            $table->string('substrate');
+            $table->string('thickness')->nullable();
+            $table->decimal('volume', 10, 2)->nullable(); // bd.ft
 
             $table->timestamps();
         });

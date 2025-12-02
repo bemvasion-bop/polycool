@@ -2,81 +2,224 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Project;
+use App\Models\Attendance;
 use App\Models\AttendanceLog;
+use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
 
 class AttendanceController extends Controller
 {
-    // Show the daily sheet (based on date)
-    public function index(Request $request)
-    {
-        // Default: Today
-        $date = $request->input('date', now()->format('Y-m-d'));
+    /* ============================================================
+       EMPLOYEE SIDE
+    ============================================================ */
 
-        $employees = User::where('role', 'employee')
-            ->where('employee_status', 'active')
+    /** Employee dashboard attendance list */
+    public function index()
+    {
+        $user = auth()->user();
+
+        $todayLog = Attendance::where('user_id', $user->id)
+            ->whereDate('created_at', Carbon::today())
+            ->first();
+
+        $recentLogs = Attendance::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+
+        return view('attendance.employee.index', compact('todayLog', 'recentLogs'));
+    }
+
+
+    /** Employee time-in using QR */
+    public function employeeTimeIn(Project $project)
+    {
+        $user = auth()->user();
+
+        Attendance::create([
+            'user_id'    => $user->id,
+            'project_id' => $project->id,
+            'time_in'    => now(),
+            'status'     => 'present'
+        ]);
+
+        return back()->with('success', 'Time-in recorded!');
+    }
+
+
+    /** Employee time-out */
+    public function employeeTimeOut(Project $project)
+    {
+        $user = auth()->user();
+
+        $log = Attendance::where('user_id', $user->id)
+            ->where('project_id', $project->id)
+            ->whereNull('time_out')
+            ->first();
+
+        if (!$log) {
+            return back()->with('error', 'No active attendance log found.');
+        }
+
+        $log->update([
+            'time_out' => now()
+        ]);
+
+        return back()->with('success', 'Time-out recorded!');
+    }
+
+
+    /** Employee QR code page */
+    public function myQR()
+    {
+        $user = auth()->user();
+
+        return view('attendance.my-qr', compact('user'));
+    }
+
+    /* ============================================================
+       MANAGER/OWNER SIDE
+    ============================================================ */
+
+    public function manage()
+    {
+        // Load employees
+        $employees = \App\Models\User::whereIn('system_role', ['employee', 'manager'])
             ->orderBy('given_name')
             ->get();
 
-        // Get existing logs for the selected date
-        $logs = AttendanceLog::where('date', $date)
-            ->get()
-            ->keyBy('user_id');
+        // Load all active projects
+        $projects = \App\Models\Project::orderBy('project_name')->get();
 
-        return view('attendance.index', compact('employees', 'logs', 'date'));
+        return view('attendance.manage', compact('employees', 'projects'));
+    }
+    public function employeeLogs(User $user)
+    {
+        $logs = Attendance::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('attendance.employee-logs', compact('user', 'logs'));
     }
 
-    // Save the daily sheet
-    public function store(Request $request)
+    public function projectLogs(Project $project)
     {
-        $data = $request->validate([
-            'date'           => 'required|date',
-            'attendance'     => 'required|array',
-            'attendance.*.user_id' => 'required|exists:users,id',
-            'attendance.*.status'  => 'required|in:present,absent,on_leave',
-            'attendance.*.time_in' => 'nullable',
-            'attendance.*.time_out'=> 'nullable',
-            'attendance.*.notes'   => 'nullable|string',
+        $logs = Attendance::where('project_id', $project->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('attendance.project-logs', compact('project', 'logs'));
+    }
+
+
+        /* ============================================================
+        QR Scanner API (public endpoint)
+        ============================================================ */
+        public function scan(Request $request)
+        {
+            $qr = $request->qr_code;
+            $projectId = $request->project_id;
+
+            if (!$qr || !$projectId) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Missing QR code or project.'
+                ], 400);
+            }
+
+            // Find user by QR code
+            $user = User::where('qr_code', $qr)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'QR code not recognized.'
+                ], 404);
+            }
+
+            // Block non-employees (manager, accounting, audit, owner)
+            if ($user->system_role !== 'employee') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This user is not a field employee.'
+                ], 403);
+            }
+
+            // Today's date
+            $today = now()->toDateString();
+
+            // Try to find existing record
+            $attendance = Attendance::where('user_id', $user->id)
+                ->where('project_id', $projectId)
+                ->where('date', $today)
+                ->first();
+
+            if (!$attendance) {
+                // TIME IN
+                Attendance::create([
+                    'user_id'    => $user->id,
+                    'project_id' => $projectId,
+                    'date'       => $today,
+                    'time_in'    => now(),
+                    'status'     => 'present'
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Time-in recorded.',
+                    'employee' => $user->full_name
+                ]);
+            }
+
+            // If already time-in but no time-out → TIME OUT
+            if ($attendance->time_in && !$attendance->time_out) {
+                $attendance->update([
+                    'time_out' => now(),
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Time-out recorded.',
+                    'employee' => $user->full_name
+                ]);
+            }
+
+            // Already time-in AND time-out
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Attendance already completed for today.'
+            ], 409);
+        }
+
+    /* ============================================================
+       ADMIN / MANAGER MANUAL OVERRIDE
+    ============================================================ */
+
+    public function manualTimeIn(User $user)
+    {
+        Attendance::create([
+            'user_id' => $user->id,
+            'time_in' => now(),
+            'status'  => 'present'
         ]);
 
-        foreach ($data['attendance'] as $emp) {
-
-            AttendanceLog::updateOrCreate(
-                [
-                    'user_id' => $emp['user_id'],
-                    'date'    => $data['date'],
-                ],
-                [
-                    'project_id'   => $emp['project_id'] ?? null,
-                    'status'       => $emp['status'],
-                    'time_in'      => $emp['time_in'],
-                    'time_out'     => $emp['time_out'],
-                    'notes'        => $emp['notes'] ?? null,
-                    'hours_worked' => $this->calculateHours($emp['time_in'], $emp['time_out'], $emp['status']),
-                ]
-            );
-        }
-
-        return back()->with('success', 'Attendance saved successfully!');
+        return back()->with('success', 'Time-in added manually.');
     }
 
-    private function calculateHours($time_in, $time_out, $status)
+    public function manualTimeOut(User $user)
     {
-        if ($status !== 'present' || !$time_in || !$time_out) {
-            return 0;
+        $log = Attendance::where('user_id', $user->id)
+            ->whereNull('time_out')
+            ->first();
+
+        if ($log) {
+            $log->update(['time_out' => now()]);
         }
 
-        try {
-            $in  = Carbon::parse($time_in);
-            $out = Carbon::parse($time_out);
-
-            return round($in->floatDiffInHours($out), 2);
-
-        } catch (\Exception $e) {
-            return 0;
-        }
+        return back()->with('success', 'Time-out added manually.');
     }
 }

@@ -1,58 +1,98 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="py-8">
-    <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Quotations</h2>
+<div class="max-w-6xl mx-auto bg-white p-8 rounded shadow">
 
-            <a href="{{ route('quotations.create') }}"
-               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
-                + New Quotation
-            </a>
-        </div>
+    <h1 class="text-2xl font-bold mb-6">Quotations</h1>
 
-        <div class="bg-white shadow-sm sm:rounded-lg p-6">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="px-3 py-2">Reference</th>
-                        <th class="px-3 py-2">Client</th>
-                        <th class="px-3 py-2">Title</th>
-                        <th class="px-3 py-2">Status</th>
-                        <th class="px-3 py-2">Total</th>
-                        <th class="px-3 py-2 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse($quotations as $quotation)
-                    <tr class="border-b">
-                        <td class="px-3 py-2">{{ $quotation->reference }}</td>
-                        <td class="px-3 py-2">{{ $quotation->client->name ?? '-' }}</td>
-                        <td class="px-3 py-2">{{ $quotation->title }}</td>
-                        <td class="px-3 py-2 capitalize">{{ $quotation->status }}</td>
-                        <td class="px-3 py-2">₱{{ number_format($quotation->total_amount, 2) }}</td>
-                        <td class="px-3 py-2 text-right space-x-2">
-                            <a href="{{ route('quotations.show', $quotation) }}"
-                               class="text-blue-600 hover:underline text-sm">View</a>
-                            <a href="{{ route('quotations.edit', $quotation) }}"
-                               class="text-green-600 hover:underline text-sm">Edit</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="px-3 py-4 text-center text-gray-500">
-                            No quotations found.
-                        </td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
+    <a href="{{ route('quotations.create') }}"
+       class="bg-purple-600 text-white px-4 py-2 rounded mb-4 inline-block">
+        + New Quotation
+    </a>
 
-            <div class="mt-4">
-                {{ $quotations->links() }}
-            </div>
-        </div>
-    </div>
+    <table class="w-full border-collapse mt-4">
+        <thead>
+            <tr class="bg-gray-100 text-left border-b">
+                <th class="p-3">#</th>
+                <th class="p-3">Client</th>
+                <th class="p-3">Project / Vessel</th>
+                <th class="p-3">Date</th>
+                <th class="p-3">Contract Price</th>
+                <th class="p-3">Status</th>
+                <th class="p-3">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @forelse ($quotations as $index => $q)
+                <tr class="border-b">
+                    <td class="p-3">{{ $index + 1 }}</td>
+
+                    {{-- Client --}}
+                    <td class="p-3">{{ $q->client->name }}</td>
+
+                    {{-- Project Name --}}
+                    <td class="p-3">{{ $q->project_name }}</td>
+
+                    {{-- Date --}}
+                    <td class="p-3">
+                        {{ \Carbon\Carbon::parse($q->quotation_date)->format('M d, Y') }}
+                    </td>
+
+                    {{-- Contract Price --}}
+                    <td class="p-3">₱{{ number_format($q->contract_price, 2) }}</td>
+
+                    {{-- Status --}}
+                    <td class="p-3">
+                        @if ($q->status === 'pending')
+                            <span class="px-2 py-1 bg-gray-200 text-gray-800 rounded">Pending</span>
+                        @elseif ($q->status === 'approved')
+                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Approved</span>
+                        @elseif ($q->status === 'declined')
+                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded">Declined</span>
+                        @elseif ($q->status === 'converted')
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">Converted</span>
+                        @endif
+                    </td>
+
+                    {{-- Actions --}}
+                    <td class="p-3 flex gap-3">
+
+                        {{-- View --}}
+                        <a href="{{ route('quotations.show', $q->id) }}"
+                           class="text-blue-600 hover:underline">
+                            View
+                        </a>
+
+
+                        {{-- 
+
+                        // Delete \\ 
+
+                        <form action="{{ route('quotations.destroy', $q->id) }}"
+                              method="POST"
+                              onsubmit="return confirm('Delete this quotation?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-red-600 hover:underline">
+                                Delete
+                            </button>
+                        </form>
+
+                         --}}
+
+                    </td>
+                </tr>
+
+            @empty
+                <tr>
+                    <td colspan="7" class="p-6 text-center text-gray-500">
+                        No quotations found.
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
 </div>
 @endsection

@@ -61,9 +61,11 @@ class ClientController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Client $client)
     {
         //
+        return view('clients.edit', compact('client'));
+
     }
 
     /**

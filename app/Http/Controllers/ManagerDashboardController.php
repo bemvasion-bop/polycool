@@ -10,4 +10,6 @@ class ManagerDashboardController extends Controller
     {
         return view('dashboard.manager');
     }
+
+    
 }

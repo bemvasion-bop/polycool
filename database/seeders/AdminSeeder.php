@@ -10,23 +10,27 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'admin@polysync.com'],
-            [
-                'name' => 'System Administrator',
-                'email' => 'admin@polysync.com',
-                'password' => Hash::make('password'),
+        User::create([
+            'email'          => 'admin@polysync.com',
+            'name'           => 'System Administrator',
 
-                // SYSTEM ROLE
-                'role' => 'owner',
+            // Add our structured name fields
+            'given_name'     => 'System',
+            'middle_name'    => null,
+            'last_name'      => 'Administrator',
 
-                // EMPLOYEE FIELDS
-                'given_name' => 'System',
-                'middle_name' => null,
-                'last_name' => 'Administrator',
-                'phone_number' => '0000000000',
-                'employee_status' => 'active',
-            ]
-        );
+            // Contact
+            'phone_number'   => '0000000000',
+
+            // NEW: System role field
+            'system_role'    => 'owner',
+
+            // Status
+            'employee_status' => 'active',
+
+            // Password
+            'password' => Hash::make('password'),
+
+        ]);
     }
 }

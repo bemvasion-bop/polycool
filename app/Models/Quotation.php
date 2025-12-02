@@ -11,23 +11,26 @@ class Quotation extends Model
 
     protected $fillable = [
         'client_id',
-        'user_id',
-        'reference',
-        'title',
-        'description',
+        'created_by',
+        'quotation_date',
+        'project_name',
+        'address',
+        'system',
+        'scope_of_work',
+        'duration_days',
+        'total_bdft',
+        'rate_per_bdft',
+        'discount',
+        'contract_price',
+        'down_payment',
+        'balance',
+        'conditions',
         'status',
-        'subtotal',
-        'tax_rate',
-        'tax_amount',
-        'discount_amount',
-        'total_amount',
-        'valid_until',
-        'approved_by',
-        'converted_project_id',
     ];
 
     protected $casts = [
         'valid_until' => 'date',
+        'quotation_date' => 'date',
     ];
 
     // Relationships
@@ -46,9 +49,9 @@ class Quotation extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function items()
+   public function items()
     {
-        return $this->hasMany(QuotationItem::class)->orderBy('sort_order');
+        return $this->hasMany(QuotationItem::class);
     }
 
     public function project()

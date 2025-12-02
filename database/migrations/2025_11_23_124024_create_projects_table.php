@@ -15,11 +15,16 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
-            $table->foreignId('quotation_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('quotation_id')->nullable();
+
+            $table->foreign('quotation_id')
+                ->references('id')
+                ->on('quotations')
+                ->nullOnDelete();
 
             $table->string('project_name');
             $table->string('location')->nullable();
-            $table->decimal('total_project_price', 12, 2)->default(0);
+            $table->decimal('total_price', 12, 2)->default(0);;
 
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
@@ -37,8 +42,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('projects', function (Blueprint $table) {
-            $table->dropSoftDeletes();
-        });
+        Schema::dropIfExists('projects');
     }
 };

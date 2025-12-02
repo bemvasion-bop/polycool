@@ -1,172 +1,78 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold">Employees</h1>
+<div class="px-10 py-8">
 
+    <h2 class="text-2xl font-semibold mb-6">Employees</h2>
+
+    <div class="mb-6">
         <a href="{{ route('employees.create') }}"
-           class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md">
-            + New Employee
+           class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded">
+            + Add Employee
         </a>
     </div>
 
-    @if (session('success'))
-        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded">
-            {{ session('success') }}
-        </div>
-    @endif
+    <div class="bg-white shadow rounded-lg p-6">
+        <table class="w-full border-collapse">
+            <thead>
+                <tr class="bg-gray-100 text-left">
+                    <th class="p-3">Name</th>
+                    <th class="p-3">Email</th>
+                    <th class="p-3">System Role</th>
 
-    <div class="bg-white shadow rounded-lg">
-        <table class="w-full table-auto text-left">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="px-4 py-2">Full Name</th>
-                    <th class="px-4 py-2">Role</th>
-                    <th class="px-4 py-2">Position</th>
-                    <th class="px-4 py-2">Status</th>
-                    <th class="px-4 py-2 text-right">Actions</th>
+                    {{-- NEW COLUMN --}}
+                    <th class="p-3">Employment Type</th>
+
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Actions</th>
                 </tr>
             </thead>
 
             <tbody>
-                @forelse ($employees as $employee)
-                    <tr class="border-b">
-                        <td class="px-4 py-3">
-                            {{ $employee->given_name }} {{ $employee->middle_name }} {{ $employee->last_name }}
-                        </td>
+                @foreach($employees as $emp)
+                <tr class="border-b">
+                    <td class="p-3">{{ $emp->given_name }} {{ $emp->last_name }}</td>
+                    <td class="p-3">{{ $emp->email }}</td>
+                    <td class="p-3 capitalize">{{ $emp->system_role }}</td>
 
-                        <td class="px-4 py-3 capitalize">
-                            {{ $employee->role }}
-                        </td>
-
-                        <td class="px-4 py-3">
-                            {{ $employee->position_title }}
-                        </td>
-
-                        <td class="px-4 py-3 capitalize">
-                            <span class="{{ $employee->employee_status === 'active' ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $employee->employee_status }}
+                    {{-- NEW EMPLOYMENT TYPE DISPLAY --}}
+                    <td class="p-3">
+                        @if($emp->employment_type === 'field_worker')
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                Field Worker
                             </span>
-                        </td>
+                        @else
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">
+                                Office Staff
+                            </span>
+                        @endif
+                    </td>
 
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ route('employees.show', $employee) }}"
-                               class="text-blue-600 hover:underline mr-3">
-                                View
-                            </a>
+                    <td class="p-3">
+                        @if($emp->employee_status === 'active')
+                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Active</span>
+                        @else
+                            <span class="px-2 py-1 bg-gray-200 text-gray-700 rounded">Inactive</span>
+                        @endif
+                    </td>
 
-                            <a href="{{ route('employees.edit', $employee) }}"
-                               class="text-yellow-600 hover:underline mr-3">
-                                Edit
-                            </a>
-
-                            <form action="{{ route('employees.destroy', $employee) }}"
-                                  method="POST" class="inline-block"
-                                  onsubmit="return confirm('Delete this employee?')">
-                                @csrf
-                                @method('DELETE')
-                                <button class="text-red-600 hover:underline">
-                                    Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">
-                            No employees found.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</div>
-@endsection
-@extends('layouts.app')
-
-@section('content')
-<div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold">Employees</h1>
-
-        <a href="{{ route('employees.create') }}"
-           class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md">
-            + New Employee
-        </a>
-    </div>
-
-    @if (session('success'))
-        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    <div class="bg-white shadow rounded-lg">
-        <table class="w-full table-auto text-left">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="px-4 py-2">Full Name</th>
-                    <th class="px-4 py-2">Role</th>
-                    <th class="px-4 py-2">Position</th>
-                    <th class="px-4 py-2">Status</th>
-                    <th class="px-4 py-2 text-right">Actions</th>
+                    <td class="p-3">
+                        <a href="{{ route('employees.edit', $emp->id) }}" class="text-blue-600 hover:underline">Edit</a>
+                        |
+                        <form action="{{ route('employees.destroy', $emp->id) }}"
+                              method="POST" class="inline-block"
+                              onsubmit="return confirm('Delete this employee?')">
+                            @csrf
+                            @method('DELETE')
+                            <button class="text-red-600 hover:underline">Delete</button>
+                        </form>
+                    </td>
                 </tr>
-            </thead>
-
-            <tbody>
-                @forelse ($employees as $employee)
-                    <tr class="border-b">
-                        <td class="px-4 py-3">
-                            {{ $employee->given_name }} {{ $employee->middle_name }} {{ $employee->last_name }}
-                        </td>
-
-                        <td class="px-4 py-3 capitalize">
-                            {{ $employee->role }}
-                        </td>
-
-                        <td class="px-4 py-3">
-                            {{ $employee->position_title }}
-                        </td>
-
-                        <td class="px-4 py-3 capitalize">
-                            <span class="{{ $employee->employee_status === 'active' ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $employee->employee_status }}
-                            </span>
-                        </td>
-
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ route('employees.show', $employee) }}"
-                               class="text-blue-600 hover:underline mr-3">
-                                View
-                            </a>
-
-                            <a href="{{ route('employees.edit', $employee) }}"
-                               class="text-yellow-600 hover:underline mr-3">
-                                Edit
-                            </a>
-
-                            <form action="{{ route('employees.destroy', $employee) }}"
-                                  method="POST" class="inline-block"
-                                  onsubmit="return confirm('Delete this employee?')">
-                                @csrf
-                                @method('DELETE')
-                                <button class="text-red-600 hover:underline">
-                                    Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">
-                            No employees found.
-                        </td>
-                    </tr>
-                @endforelse
+                @endforeach
             </tbody>
+
         </table>
     </div>
+
 </div>
 @endsection

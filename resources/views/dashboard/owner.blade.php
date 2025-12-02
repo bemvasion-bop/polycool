@@ -1,10 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <div class="p-6">
     <h1 class="text-2xl font-semibold mb-6">Owner Dashboard</h1>
 
-    <div class="grid grid-cols-3 gap-6">
+    {{-- ======================= --}}
+    {{-- TOP CARDS --}}
+    {{-- ======================= --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <div class="bg-white p-6 rounded shadow">
             <p class="text-sm text-gray-500">TOTAL PROJECTS</p>
@@ -18,17 +23,134 @@
 
         <div class="bg-white p-6 rounded shadow">
             <p class="text-sm text-gray-500">TOTAL REVENUE</p>
-            <p class="text-3xl font-bold text-pink-600">Php {{ number_format($totalRevenue, 2) }}</p>
+            <p class="text-3xl font-bold text-pink-600">
+                Php {{ number_format($totalRevenue, 2) }}
+            </p>
         </div>
 
     </div>
 
-    <h2 class="mt-8 text-xl font-semibold">Quick Actions</h2>
 
-    <div class="grid grid-cols-3 gap-4 mt-4">
-        <a href="/projects" class="py-3 text-center bg-blue-600 rounded text-white">View Projects</a>
-        <a href="/clients" class="py-3 text-center bg-green-600 rounded text-white">View Clients</a>
-        <a href="/employees" class="py-3 text-center bg-purple-600 rounded text-white">Manage Employees</a>
+    {{-- ======================= --}}
+    {{-- ANALYTICS GRAPHS --}}
+    {{-- ======================= --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
+
+        {{-- LINE GRAPH — MONTHLY REVENUE --}}
+        <div class="bg-white p-6 shadow rounded">
+            <h3 class="text-xl font-semibold mb-4">Monthly Revenue</h3>
+            <canvas id="revenueChart"></canvas>
+        </div>
+
+        {{-- STACKED BAR — PROJECT STATUS --}}
+        <div class="bg-white p-6 shadow rounded">
+            <h3 class="text-xl font-semibold mb-4">Project Status Distribution</h3>
+            <canvas id="projectStatusChart"></canvas>
+        </div>
+
+        {{-- HORIZONTAL BAR — EXPENSE BREAKDOWN --}}
+        <div class="bg-white p-6 shadow rounded">
+            <h3 class="text-xl font-semibold mb-4">Expense Breakdown</h3>
+            <canvas id="expenseChart"></canvas>
+        </div>
+
     </div>
 </div>
+
+
+{{-- ========================================= --}}
+{{-- CHART.JS DATA --}}
+{{-- ========================================= --}}
+<script>
+    // Monthly Revenue (Line Graph)
+    const revenueLabels = {!! json_encode($monthlyRevenue->keys()) !!};
+    const revenueData   = {!! json_encode($monthlyRevenue->values()) !!};
+
+    // Project Status (Stacked Bar)
+    const projectLabels = {!! json_encode($projectStatus->keys()) !!};
+    const projectValues = {!! json_encode($projectStatus->values()) !!};
+
+    // Expense Breakdown (Horizontal Bar)
+    const expenseLabels = {!! json_encode($expenseBreakdown->keys()) !!};
+    const expenseValues = {!! json_encode($expenseBreakdown->values()) !!};
+
+
+
+    // ---------------------------------
+    // 1️⃣ MONTHLY REVENUE — LINE GRAPH
+    // ---------------------------------
+    new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+            labels: revenueLabels,
+            datasets: [{
+                label: 'Revenue (PHP)',
+                data: revenueData,
+                borderColor: '#4F46E5',
+                backgroundColor: '#4F46E5',
+                tension: 0.3,
+                fill: false,
+                borderWidth: 3,
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+
+
+    // ---------------------------------
+    // 2️⃣ PROJECT STATUS — STACKED BAR
+    // ---------------------------------
+    new Chart(document.getElementById('projectStatusChart'), {
+        type: 'bar',
+        data: {
+            labels: projectLabels,
+            datasets: [{
+                label: 'Projects',
+                data: projectValues,
+                backgroundColor: ['#22C55E', '#3B82F6', '#F59E0B', '#EF4444'],
+            }]
+        },
+        options: {  
+            indexAxis: 'y',
+            plugins: { legend: { display: false }},
+            responsive: true,
+            scales: {
+                x: { stacked: true, beginAtZero: true },
+                y: { stacked: true }
+            }
+        }
+    });
+
+
+
+    // --------------------------------------------
+    // 3️⃣ EXPENSE BREAKDOWN — HORIZONTAL BAR CHART
+    // --------------------------------------------
+    new Chart(document.getElementById('expenseChart'), {
+        type: 'bar',
+        data: {
+            labels: expenseLabels,
+            datasets: [{
+                label: 'Expenses (PHP)',
+                data: expenseValues,
+                backgroundColor: '#6366F1'
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y', // HORIZONTAL
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+
+</script>
 @endsection

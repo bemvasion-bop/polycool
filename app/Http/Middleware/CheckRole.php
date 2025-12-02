@@ -4,24 +4,39 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
     /**
      * Handle an incoming request.
+     *
+     * Usage:
+     *   ->middleware('role:owner')
+     *   ->middleware('role:owner,manager')
      */
-    public function handle(Request $request, Closure $next, ...$roles): Response
+    public function handle($request, Closure $next, ...$roles)
     {
-        // If user is NOT logged in → redirect to login
-        if (!auth()->check()) {
-            return redirect()->route('login');
-        }
-
         $user = auth()->user();
 
-        // If role does NOT match any allowed role → deny access
-        if (!in_array($user->role, $roles)) {
+        if (!$user) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Normalize role name
+        $normalizedRole = strtolower(trim($user->system_role));
+
+        // Map aliases to real roles
+        $roleMap = [
+            'system administrator' => 'owner',
+            'system_admin'         => 'owner',
+            'admin'                => 'owner',
+        ];
+
+        // Convert to mapped role or keep original
+        $effectiveRole = $roleMap[$normalizedRole] ?? $normalizedRole;
+
+        // Check if the user role is allowed in this route group
+        if (!in_array($effectiveRole, $roles)) {
             abort(403, 'Unauthorized');
         }
 

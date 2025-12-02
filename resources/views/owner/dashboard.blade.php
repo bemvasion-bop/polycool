@@ -1,51 +1,80 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-6xl mx-auto">
+<div class="px-10 py-8">
 
-    <h1 class="text-2xl font-bold mb-6">Owner Dashboard</h1>
+    <h2 class="text-2xl font-semibold mb-6">Payroll Overview</h2>
 
+    <!-- GRID WRAPPER -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <!-- Card -->
-        <div class="bg-white p-6 shadow rounded border border-gray-200">
-            <h2 class="text-gray-600 text-sm">TOTAL PROJECTS</h2>
-            <p class="text-3xl font-bold text-blue-600 mt-2">0</p>
+        <!-- Payroll This Month -->
+        <div class="bg-white shadow p-6 rounded">
+            <p class="text-gray-600">Payroll This Month</p>
+            <p class="text-2xl font-bold text-purple-600">
+                ₱{{ number_format($payrollThisMonth, 2) }}
+            </p>
         </div>
 
-        <div class="bg-white p-6 shadow rounded border border-gray-200">
-            <h2 class="text-gray-600 text-sm">ACTIVE EMPLOYEES</h2>
-            <p class="text-3xl font-bold text-green-600 mt-2">0</p>
+        <!-- Payroll YTD -->
+        <div class="bg-white shadow p-6 rounded">
+            <p class="text-gray-600">Year-To-Date Payroll</p>
+            <p class="text-2xl font-bold text-purple-600">
+                ₱{{ number_format($payrollYTD, 2) }}
+            </p>
         </div>
 
-        <div class="bg-white p-6 shadow rounded border border-gray-200">
-            <h2 class="text-gray-600 text-sm">TOTAL REVENUE</h2>
-            <p class="text-3xl font-bold text-purple-600 mt-2">Php 0.00</p>
+        <!-- Next Cutoff -->
+        <div class="bg-white shadow p-6 rounded">
+            <p class="text-gray-600">Next Cutoff</p>
+            <p class="text-2xl font-bold text-purple-600">
+                {{ $nextCutoff->format('M d, Y') }}
+            </p>
+        </div>
+
+        <!-- Employees Paid -->
+        <div class="bg-white shadow p-6 rounded">
+            <p class="text-gray-600">Employees Paid (This Month)</p>
+            <p class="text-2xl font-bold text-purple-600">
+                {{ $employeesPaidThisMonth }}
+            </p>
+        </div>
+
+        <!-- Cash Advance Deductions -->
+        <div class="bg-white shadow p-6 rounded">
+            <p class="text-gray-600">Cash Advance Deductions (Month)</p>
+            <p class="text-2xl font-bold text-purple-600">
+                ₱{{ number_format($cashAdvancesDeducted, 2) }}
+            </p>
         </div>
 
     </div>
 
-    <div class="mt-8">
-        <h2 class="text-lg font-semibold mb-3">Quick Actions</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- TREND CHART -->
+    <div class="bg-white shadow p-6 rounded mt-10">
+        <h3 class="font-semibold text-lg mb-4">Payroll Trend (Last 6 Months)</h3>
 
-            <a href="/projects"
-               class="bg-blue-600 text-white p-4 rounded shadow hover:bg-blue-700 text-center">
-                View Projects
-            </a>
-
-            <a href="/clients"
-               class="bg-green-600 text-white p-4 rounded shadow hover:bg-green-700 text-center">
-                View Clients
-            </a>
-
-            <a href="/employees"
-               class="bg-purple-600 text-white p-4 rounded shadow hover:bg-purple-700 text-center">
-                Manage Employees
-            </a>
-
-        </div>
+        <canvas id="payrollChart" height="120"></canvas>
     </div>
 
 </div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('payrollChart');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: {!! json_encode($lastSixMonths->pluck('month')) !!},
+        datasets: [{
+            label: 'Payroll Amount',
+            data: {!! json_encode($lastSixMonths->pluck('total')) !!},
+            backgroundColor: '#7C3AED',
+        }]
+    }
+});
+</script>
+
 @endsection

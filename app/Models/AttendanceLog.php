@@ -14,7 +14,7 @@ class AttendanceLog extends Model
         'time_out',
         'hours_worked',
         'status',
-        'notes',
+        'notes'
     ];
 
     public function user()
