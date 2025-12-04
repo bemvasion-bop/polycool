@@ -1,60 +1,117 @@
 @extends('layouts.app')
 
+@section('page-header')
+    <h2 class="text-3xl font-semibold text-gray-900 tracking-tight">Clients</h2>
+@endsection
+
 @section('content')
-<div class="p-8">
 
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-semibold">Clients</h2>
+<style>
+    .glass-card {
+         border-radius: 26px;
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+    padding: 28px 32px;
+    }
+</style>
 
-        <a href="{{ route('clients.create') }}"
-           class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow">
-            + New Client
-        </a>
-    </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
-        <table class="w-full text-left">
-            <thead>
-                <tr class="border-b text-gray-600">
-                    <th class="py-3">Name</th>
-                    <th>Contact Person</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
+</style>
 
-            <tbody>
-                @forelse($clients as $client)
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-3">{{ $client->name }}</td>
-                        <td>{{ $client->contact_person }}</td>
-                        <td>{{ $client->email }}</td>
-                        <td>{{ $client->phone }}</td>
+{{-- ============================================================
+   🌈 ACTION BAR (New + Search + Sort + Filter)
+============================================================ --}}
+<div class="flex flex-wrap items-center justify-between mb-6 gap-3">
 
-                        <td class="space-x-3">
-                            <a href="{{ route('clients.show', $client->id) }}"
-                               class="text-blue-600 hover:underline">View</a>
+    <a href="{{ route('clients.create') }}"
+       class="glass-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg">
+        + New Client
+    </a>
 
-                            <a href="{{ route('clients.edit', $client->id) }}"
-                               class="text-green-600 hover:underline">Edit</a>
+    <div class="flex items-center gap-3">
 
-                            <form action="{{ route('clients.destroy', $client->id) }}"
-                                  method="POST" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button class="text-red-600 hover:underline"
-                                        onclick="return confirm('Delete this client?')">
-                                    Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="5" class="py-5 text-center text-gray-500">No clients found.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+        {{-- Search --}}
+        <input type="text" id="searchInput"
+               class="rounded-full bg-white/60 px-4 py-2 text-sm border border-white/60 backdrop-blur-sm"
+               placeholder="Search…">
+
+        {{-- Sort --}}
+        <select id="sortSelect" class="glass-btn text-sm">
+            <option value="default">Sort: Default</option>
+            <option value="client">Client</option>
+            <option value="price">Contract Price</option>
+            <option value="date">Date</option>
+            <option value="status">Status</option>
+        </select>
+
+        {{-- Filter Drawer Button --}}
+        <button id="filterBtn" class="glass-btn flex items-center gap-2">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Filters
+        </button>
     </div>
 </div>
+
+
+
+{{-- ======================= --}}
+{{-- TABLE (CLEAN + PREMIUM) --}}
+{{-- ======================= --}}
+<div class="glass-card p-0 overflow-hidden">
+
+    <table class="w-full text-left">
+        <thead>
+            <tr class="bg-white/60 backdrop-blur-md text-gray-600 border-b border-gray-200">
+                <th class="p-4 font-semibold">Name</th>
+                <th class="p-4 font-semibold">Contact Person</th>
+                <th class="p-4 font-semibold">Email</th>
+                <th class="p-4 font-semibold">Phone</th>
+                <th class="p-4 font-semibold text-right">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody class="divide-y divide-gray-100">
+
+            @foreach($clients as $client)
+            <tr class="hover:bg-white/50 transition-all">
+
+                <td class="p-4 text-gray-900">
+                    {{ $client->name }}
+                </td>
+
+                <td class="p-4 text-gray-700">
+                    {{ $client->contact_person }}
+                </td>
+
+                <td class="p-4 text-gray-700">
+                    {{ $client->email }}
+                </td>
+
+                <td class="p-4 text-gray-700">
+                    {{ $client->phone }}
+                </td>
+
+                <td class="p-4 text-right space-x-4">
+                    <a href="{{ route('clients.show', $client->id) }}"
+                       class="text-blue-600 hover:text-blue-700 font-medium">
+                        View
+                    </a>
+
+                    <a href="{{ route('clients.edit', $client->id) }}"
+                       class="text-green-600 hover:text-green-700 font-medium">
+                        Edit
+                    </a>
+                </td>
+
+            </tr>
+            @endforeach
+
+        </tbody>
+    </table>
+
+</div>
+
+</div>
+
 @endsection
