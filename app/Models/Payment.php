@@ -15,12 +15,16 @@ class Payment extends Model
         'payment_method',
         'payment_date',
         'notes',
+        'proof_path',
         'status',
         'submitted_by',
         'approved_by',
-        'receipt_path',
-        'issued_from_payment_id',
+        'added_by',
+        'reversal_of',
+        'corrected_by',
+        'correction_reason',
     ];
+
 
     public function project()
     {
@@ -50,5 +54,10 @@ class Payment extends Model
     public function originalPayment()
     {
         return $this->belongsTo(Payment::class, 'issued_from_payment_id');
+    }
+
+    public function correctedBy()
+    {
+        return $this->belongsTo(User::class, 'corrected_by');
     }
 }

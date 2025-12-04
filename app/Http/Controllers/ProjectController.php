@@ -32,46 +32,57 @@ class ProjectController extends Controller
     /**
      * Show specific project.
      */
-   public function show(Project $project, WeatherService $weatherService)
+    public function show(Project $project, WeatherService $weatherService)
     {
-        // LOAD RELATIONSHIPS ONCE
         $project->load([
             'client',
             'expenses.user',
-            'payments.addedBy',
+            'payments.submitter',
             'users',
             'extraWorks.addedBy',
-            'materials',
         ]);
 
-        // WEATHER
+
+        $materials = Material::with('supplier')->orderBy('name')->get();
+
+
+        // Weather
         $weatherData = $weatherService->getForecast($project->location);
         $project->progress = $project->calculateProgress();
 
-        // FINANCIALS
+        // Financials
         $basePrice         = $project->base_contract_price;
         $extraWorkTotal    = $project->extra_work_total;
         $totalProjectPrice = $project->final_project_price;
 
-        /**
-         * ─────────────────────────────────────────────
-         *  IMPORTANT PART: APPROVED PAYMENT TOTAL ONLY
-         * ─────────────────────────────────────────────
-         */
         $totalPaid = $project->payments()
             ->where('status', 'approved')
             ->sum('amount');
 
+        // Expense Financials — Only APPROVED counted
+        $totalApprovedMaterial = $project->expenses()
+            ->where('status', 'approved')
+            ->whereNotNull('material_id')
+            ->sum('total_cost');
+
+        $totalApprovedCustom = $project->expenses()
+            ->where('status', 'approved')
+            ->whereNull('material_id')
+            ->sum('amount');
+
+        $totalApprovedExpenses = $totalApprovedMaterial + $totalApprovedCustom;
+
+        $remainingAfterExpenses = ($totalProjectPrice ?? 0) - $totalApprovedExpenses;
+
         $remainingBalance = ($totalProjectPrice ?? 0) - $totalPaid;
 
-        // Collections for tables
-        $payments  = $project->payments()->orderBy('payment_date')->get();
-        $expenses  = $project->expenses;
-        $materials = Material::with('supplier')->get();
         $extraWorks = $project->extraWorks()->with('addedBy')->get();
+        $payments = $project->payments()->orderBy('created_at', 'desc')->get();
+
 
         return view('projects.show', compact(
-            'project',
+  'project',
+ 'payments',
             'materials',
             'extraWorks',
             'basePrice',
@@ -79,9 +90,12 @@ class ProjectController extends Controller
             'totalProjectPrice',
             'totalPaid',
             'remainingBalance',
+            'totalApprovedExpenses',
+            'remainingAfterExpenses',
             'weatherData',
         ));
     }
+
 
 
 
@@ -246,5 +260,5 @@ class ProjectController extends Controller
         return back()->with('success', 'Extra work entry removed.');
     }
 
-    
+
 }

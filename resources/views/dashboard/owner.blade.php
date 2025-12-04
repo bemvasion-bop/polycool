@@ -6,6 +6,47 @@
 <div class="p-6">
     <h1 class="text-2xl font-semibold mb-6">Owner Dashboard</h1>
 
+
+        <button id="syncBtn"
+            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg">
+            Sync Data to Cloud
+        </button>
+
+        <script>
+        document.getElementById('syncBtn').addEventListener('click', function () {
+            if (!confirm("Sync all pending data to cloud?")) return;
+
+            let btn = this;
+            btn.disabled = true;
+            btn.innerHTML = 'Syncing... ⏳';
+
+            fetch("{{ route('sync.all') }}", {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                    "Accept": "application/json"
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message ?? "Sync completed!");
+            })
+            .catch(() => {
+                alert("Sync failed! Check network.");
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = 'Sync Data to Cloud';
+            });
+        });
+        </script>
+
+
+    </div>
+
+
+
+
     {{-- ======================= --}}
     {{-- TOP CARDS --}}
     {{-- ======================= --}}
@@ -117,7 +158,7 @@
                 backgroundColor: ['#22C55E', '#3B82F6', '#F59E0B', '#EF4444'],
             }]
         },
-        options: {  
+        options: {
             indexAxis: 'y',
             plugins: { legend: { display: false }},
             responsive: true,

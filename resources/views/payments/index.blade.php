@@ -14,10 +14,11 @@
 
     {{-- Create Payment Button (Owner + Accounting Only) --}}
     @if(in_array(auth()->user()->system_role, ['owner','accounting']))
-        <a href="{{ route('payments.create') }}"
-           class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-6 inline-block">
+        <button onclick="document.getElementById('addPaymentModal').classList.remove('hidden')"
+            class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-6 inline-block">
             + Add Payment
-        </a>
+        </button>
+
     @endif
 
     <div class="bg-white p-6 shadow rounded">
@@ -83,10 +84,11 @@
                         <span class="px-3 py-1 text-sm bg-gray-300 rounded">Pending</span>
                     @endif
 
-                    {{-- PRINT PDF (Owner/Accounting/Audit only) --}}
+                    {{-- PRINT PDF (Owner/Accounting/Audit only)
                     @if(in_array(auth()->user()->system_role, ['owner','accounting','audit']))
                         <a href="{{ route('payments.pdf', $payment->id) }}" class="text-purple-700 ml-4">Print</a>
                     @endif
+                     --}}
 
 
                     @if($payment->status === 'cancelled')

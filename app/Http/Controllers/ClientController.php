@@ -32,22 +32,24 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        //
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'contact_person' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255'
-
+            'address' => 'nullable|string|max:255',
         ]);
+
+        // Always pending until synced to CleverCloud
+        $validated['sync_status'] = 'pending';
 
         $client = Client::create($validated);
 
         return redirect()
             ->route('clients.show', $client->id)
-            ->with('success','Client added successfully. ');
+            ->with('success','Client saved locally — syncing soon.');
     }
+
 
     /**
      * Display the specified resource.
@@ -102,4 +104,36 @@ class ClientController extends Controller
             ->route('clients.index', $client)
             ->with('success','Client deleted successfully. ');
     }
+
+    public function syncClients() {
+    $pending = Client::where('sync_status', 'pending')->get();
+
+    if ($pending->count() == 0) {
+        return back()->with('info', 'No pending sync data');
+    }
+
+    $syncedCount = 0;
+
+    foreach ($pending as $client) {
+        try {
+            \DB::connection('cloud')->table('clients')->insert([
+                'name' => $client->name,
+                'contact_person' => $client->contact_person,
+                'email' => $client->email,
+                'phone' => $client->phone,
+                'address' => $client->address,
+            ]);
+
+            $client->sync_status = 'synced';
+            $client->save();
+            $syncedCount++;
+
+        } catch (\Exception $e) {
+            \Log::error("SYNC FAILED: " . $e->getMessage());
+        }
+    }
+
+    return back()->with('success', "Synced {$syncedCount} clients successfully!");
+    }
+
 }

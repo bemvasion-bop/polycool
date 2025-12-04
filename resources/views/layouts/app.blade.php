@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'PolySync')</title>
 
@@ -192,17 +193,21 @@
 
             <div class="menu-section">Attendance</div>
 
+
             <a href="{{ route('attendance.manage') }}">
                 <div class="menu-item {{ request()->routeIs('attendance.manage') ? 'menu-active' : '' }}">
                     <i data-lucide="clipboard-list" class="w-5 h-5"></i> Attendance Manager
                 </div>
             </a>
 
+
             <a href="{{ route('attendance.scanner') }}">
                 <div class="menu-item {{ request()->routeIs('attendance.scanner') ? 'menu-active' : '' }}">
                     <i data-lucide="scan-line" class="w-5 h-5"></i> QR Scanner
                 </div>
             </a>
+
+
 
             {{-- FOOTER --}}
             <div class="mt-10 pt-6 border-t border-gray-300/40">
@@ -226,11 +231,29 @@
         @yield('content')
     </main>
 
+    <script src="{{ asset('js/offline-sync.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!navigator.onLine) {
+            document.body.insertAdjacentHTML('afterbegin',
+                '<div style="background:#c62828;color:white;padding:8px;text-align:center;">OFFLINE MODE</div>'
+            );
+        }
+    });
+    </script>
+
 </div>
 
 <script>
     lucide.createIcons();
 </script>
 
+
+
+
+
+
+
+
 </body>
-</html> 
+</html>

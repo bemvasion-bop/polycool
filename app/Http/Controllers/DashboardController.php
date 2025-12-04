@@ -200,4 +200,37 @@ class DashboardController extends Controller
             'totalExpenses' => 0,
         ]);
     }
+
+    public function syncAll()
+{
+    $pendingClients = \App\Models\Client::where('sync_status', 'pending')->get();
+    $syncedCount = 0;
+
+    foreach ($pendingClients as $client) {
+        try {
+            \DB::connection('cloud')->table('clients')->updateOrInsert(
+    ['email' => $client->email],
+            [
+                'name' => $client->name,
+                'contact_person' => $client->contact_person,
+                'phone' => $client->phone,
+                'address' => $client->address,
+                'created_at' => $client->created_at,
+                'updated_at' => now(),
+            ]
+        );
+
+            $client->sync_status = 'synced';
+            $client->save();
+            $syncedCount++;
+        } catch (\Exception $e) {
+            \Log::error("Client Sync Fail: " . $e->getMessage());
+        }
+    }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Synced {$syncedCount} clients to cloud!"
+        ]);}
+
 }

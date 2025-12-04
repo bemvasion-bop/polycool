@@ -1,53 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-2xl mx-auto bg-white p-8 rounded shadow">
+<div class="max-w-lg mx-auto bg-white p-6 rounded shadow">
 
-    <h2 class="text-2xl font-semibold mb-4">
-        Re-Issue Payment
-    </h2>
-
-    <p class="text-gray-600 mb-4">
-        Correcting cancelled payment of:
-        <strong>₱{{ number_format($payment->amount, 2) }}</strong>
-    </p>
+    <h2 class="text-xl font-bold mb-4">Re-Issue Payment</h2>
 
     <form action="{{ route('payments.reissue', $payment->id) }}" method="POST">
         @csrf
 
-        <div class="mb-4">
-            <label class="font-medium">Amount</label>
-            <input type="number" step="0.01" name="amount" required
-                   class="w-full border rounded p-2"
-                   value="{{ old('amount') }}">
-        </div>
+        <label>New Amount</label>
+        <input type="number" step="0.01" name="amount" class="w-full border p-2 rounded mb-3" required>
 
-        <div class="mb-4">
-            <label class="font-medium">Method</label>
-            <select name="method" required class="w-full border rounded p-2">
-                <option value="Cash">Cash</option>
-                <option value="Bank Transfer">Bank Transfer</option>
-                <option value="Cheque">Cheque</option>
-            </select>
-        </div>
+        <label>Payment Method</label>
+        <input type="text" name="method" class="w-full border p-2 rounded mb-3" required>
 
-        <div class="mb-4">
-            <label class="font-medium">Payment Date</label>
-            <input type="date" name="payment_date" required
-                   class="w-full border rounded p-2"
-                   value="{{ now()->toDateString() }}">
-        </div>
+        <label>Payment Date</label>
+        <input type="date" name="payment_date" class="w-full border p-2 rounded mb-3" required>
 
-        <div class="mb-4">
-            <label class="font-medium">Notes (Optional)</label>
-            <textarea name="notes" class="w-full border rounded p-2"
-                      placeholder="Explain the correction…"></textarea>
-        </div>
+        <label>Reason for Correction</label>
+        <textarea name="correction_reason" class="w-full border p-2 rounded mb-3" required></textarea>
 
-        <button class="bg-indigo-600 text-white px-4 py-2 rounded">
-            Re-Issue Payment
-        </button>
-
+        <button class="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
     </form>
 
 </div>

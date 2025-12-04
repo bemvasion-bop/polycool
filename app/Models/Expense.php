@@ -12,12 +12,26 @@ class Expense extends Model
     protected $fillable = [
         'project_id',
         'user_id',
+
+        // MATERIAL EXPENSE FIELDS
+        'material_id',
+        'supplier_id',
+        'unit_cost',
+        'quantity_used',
+        'total_cost',
+
+        // CUSTOM CATEGORY EXPENSE FIELDS
         'category',
         'amount',
-        'expense_date',
         'description',
+
+        'expense_date',
         'receipt_path',
         'status',
+
+        'reversal_of',
+        'corrected_by',
+        'correction_reason',
     ];
 
     /*
@@ -41,5 +55,10 @@ class Expense extends Model
     public function material()
     {
         return $this->belongsTo(Material::class);
+    }
+
+    public function correctedBy()
+    {
+        return $this->belongsTo(User::class, 'corrected_by');
     }
 }

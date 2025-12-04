@@ -12,16 +12,21 @@ class LoginController extends Controller
     public function __construct()
     {
         $this->middleware('guest')->except('logout');
-        $this->middleware('auth')->only('logout');
     }
 
     protected function authenticated($request, $user)
     {
-        return match($user->role) {
-            'owner'     => redirect()->route('owner.dashboard'),
-            'manager'   => redirect()->route('manager.dashboard'),
-            'employee'  => redirect()->route('employee.dashboard'),
-            default     => abort(403, 'Unauthorized'),
+        $role = $user->system_role;   // <-- FIXED
+
+        return match ($role) {
+            'owner'      => redirect()->route('owner.dashboard'),
+            'manager'    => redirect()->route('manager.dashboard'),
+            'employee'   => redirect()->route('employee.dashboard'),
+            'accounting' => redirect()->route('accounting.dashboard'),
+            'audit'      => redirect()->route('audit.dashboard'),
+
+            default      => abort(403, 'Unauthorized role'),
         };
     }
+
 }

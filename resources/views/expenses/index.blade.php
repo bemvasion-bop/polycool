@@ -71,41 +71,49 @@
                                     </span>
                             @endswitch
                         </td>
-                        <td class="px-4 py-2 text-center">
-                            <div class="inline-flex items-center gap-2">
+                        <td class="px-4 py-2">
 
-                                {{-- VIEW --}}
-                                <a href="{{ route('expenses.show', $expense) }}"
-                                   class="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100">
-                                    View
-                                </a>
-
-                                @if($expense->status === 'pending' && in_array(auth()->user()->system_role, ['owner','accounting']))
-                                    {{-- APPROVE --}}
-                                    <form action="{{ route('expenses.approve', $expense) }}"
-                                          method="POST"
-                                          onsubmit="return confirm('Approve this expense?');">
-                                        @csrf
-                                        <button type="submit"
-                                            class="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
-                                            Approve
-                                        </button>
-                                    </form>
-
-                                    {{-- REJECT --}}
-                                    <form action="{{ route('expenses.reject', $expense) }}"
-                                          method="POST"
-                                          onsubmit="return confirm('Reject this expense?');">
-                                        @csrf
-                                        <button type="submit"
-                                            class="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">
-                                            Reject
-                                        </button>
-                                    </form>
+                                {{-- CANCELLED --}}
+                                @if($expense->status === 'cancelled')
+                                    <span class="text-gray-400 italic">Cancelled</span>
+                                    @continue
                                 @endif
 
-                            </div>
-                        </td>
+                                {{-- REVERSED --}}
+                                @if($expense->status === 'reversed')
+                                    <span class="text-red-500 italic">Reversed</span>
+                                    <a href="{{ route('expenses.show', $expense->reversal_of) }}"
+                                    class="text-xs underline text-blue-600 ml-2">View original</a>
+                                    @continue
+                                @endif
+
+                                {{-- APPROVED --}}
+                                @if($expense->status === 'approved')
+                                    <span class="px-2 py-1 text-xs bg-green-600 text-white rounded">Approved</span>
+                                    @continue
+                                @endif
+
+                                {{-- PENDING — ALLOWED FOR OWNER + ACCOUNTING --}}
+                                @if($expense->status === 'pending')
+                                    <form action="{{ route('expenses.cancel', $expense) }}"
+                                        method="POST"
+                                        class="inline-block"
+                                        onsubmit="return confirm('Cancel this expense?');">
+                                        @csrf
+                                        <button type="submit"
+                                            class="px-3 py-1 text-xs bg-red-500 text-white rounded">
+                                            Cancel
+                                        </button>
+                                    </form>
+
+                                    <a href="{{ route('expenses.reissueForm', $expense) }}"
+                                        class="px-3 py-1 text-xs bg-yellow-500 text-white rounded ml-1">
+                                        Re-Issue
+                                    </a>
+                                @endif
+
+                            </td>
+
                     </tr>
                 @empty
                     <tr>

@@ -5,228 +5,151 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\Project;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
-    /**
-     * List all payments.
-     */
+    /* ============================================================
+     * LIST PAYMENTS (Owner + Accounting)
+     * ============================================================ */
     public function index()
     {
         $payments = Payment::with(['project', 'addedBy', 'approvedBy'])
-            ->orderBy('created_at', 'desc')
+            ->latest()
             ->get();
 
         return view('payments.index', compact('payments'));
     }
 
 
-    /**
-     * Show full payment details (for Audit + Owner/Accounting).
-     */
-    public function show(Payment $payment)
-    {
-        $payment->load(['project', 'addedBy', 'approvedBy']);
 
+    /* ============================================================
+     * STORE NEW PAYMENT (Manager, Owner, Accounting)
+     * ============================================================ */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'project_id'      => 'required|exists:projects,id',
+            'amount'          => 'required|numeric|min:1',
+            'payment_method'  => 'required|string',
+            'payment_date'    => 'required|date',
+            'notes'           => 'nullable|string',
+            'proof'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        ]);
+
+        // FIXED: correct column name is proof_path
+        if ($request->hasFile('proof')) {
+            $validated['proof_path'] = $request->file('proof')->store('payment_proofs', 'public');
+        }
+
+        // Do NOT save wrong field
+        unset($validated['proof']);
+
+        // status + submitter
+        $validated['status']       = 'pending';
+        $validated['submitted_by'] = auth()->id();
+
+        Payment::create($validated);
+
+        return back()->with('success', 'Payment submitted for approval.');
+    }
+
+
+
+
+    /* ============================================================
+     * VIEW PAYMENT DETAILS
+     * ============================================================ */
+    public function show($id)
+    {
+        $payment = Payment::with(['project', 'addedBy', 'approvedBy'])->findOrFail($id);
         return view('payments.show', compact('payment'));
     }
 
 
-    /**
-     * Show create form.
-     */
-    public function create()
+
+    /* ============================================================
+     * APPROVE PAYMENT (Owner + Accounting)
+     * ============================================================ */
+    public function approve($id)
     {
-        $projects = Project::orderBy('project_name')->get();
+        $payment = Payment::findOrFail($id);
 
-        return view('payments.create', compact('projects'));
-    }
-
-
-    /**
-     * Store payment.
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'project_id'     => 'required|exists:projects,id',
-            'amount'         => 'required|numeric|min:1',
-            'payment_method' => 'required|string',
-            'payment_date'   => 'required|date',
-            'notes'          => 'nullable|string|max:255',
-        ]);
-
-        $payment = Payment::create([
-            'project_id'   => $request->project_id,
-            'amount'       => $request->amount,
-            'method'       => $request->method,
-            'paid_at'      => $request->paid_at,
-            'status'       => 'pending',
-            'added_by'     => auth()->id(),
-        ]);
-
-        return redirect()
-            ->route('payments.index')
-            ->with('success', 'Payment added. Awaiting approval.');
-    }
-
-
-    /**
-     * Edit payment (Owner only).
-     */
-    public function edit(Payment $payment)
-    {
-        if (Auth::user()->system_role !== 'owner') {
-            abort(403);
-        }
-
-        $projects = Project::orderBy('project_name')->get();
-
-        return view('payments.edit', compact('payment', 'projects'));
-    }
-
-
-    /**
-     * Update payment.
-     */
-    public function update(Request $request, Payment $payment)
-    {
-        if (Auth::user()->system_role !== 'owner') {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'project_id'     => 'required|exists:projects,id',
-            'amount'         => 'required|numeric|min:1',
-            'payment_method' => 'required|string',
-            'payment_date'   => 'required|date',
-            'notes'          => 'nullable|string|max:255',
-        ]);
-
-        $payment->update($validated);
-
-        return redirect()
-            ->route('payments.index')
-            ->with('success', 'Payment updated successfully.');
-    }
-
-
-    /**
-     * Approve payment (Accounting only).
-     */
-    public function approve(Payment $payment)
-    {
         $payment->update([
             'status'       => 'approved',
             'approved_by'  => auth()->id(),
         ]);
 
-        return back()->with('success', 'Payment approved successfully.');
+        return back()->with('success', 'Payment approved.');
     }
 
 
-    /**
-     * Reject payment.
-     */
-    public function reject(Payment $payment)
+
+    /* ============================================================
+     * CANCEL PAYMENT (Reversal)
+     * ============================================================ */
+    public function cancel(Request $request, $id)
     {
-        $payment->update([
-            'status'       => 'rejected',
-            'approved_by'  => auth()->id(),
+        $payment = Payment::findOrFail($id);
+
+        $request->validate([
+            'correction_reason' => 'required|string',
         ]);
 
-        return back()->with('success', 'Payment rejected.');
-    }
-
-
-    /**
-     * Delete payment (Owner only).
-     */
-    public function destroy(Payment $payment)
-    {
-        if (Auth::user()->system_role !== 'owner') {
-            abort(403);
-        }
-
-        $payment->delete();
-
-        return redirect()
-            ->route('payments.index')
-            ->with('success', 'Payment deleted.');
-    }
-
-
-    public function pdf(Payment $payment)
-    {
-        $payment->load(['project','addedBy','approvedBy']);
-
-        $pdf = \PDF::loadView('payments.pdf', compact('payment'))
-                ->setPaper('A4','portrait');
-
-        return $pdf->download('Payment-'.$payment->id.'.pdf');
-    }
-
-    public function downloadPdf(Payment $payment)
-    {
-        // For now just return the same view
-        // you can add real PDF generation later
-        return view('payments.show', compact('payment'));
-    }
-
-    public function cancel(Payment $payment)
-    {
-        if ($payment->status !== 'approved') {
-            return back()->with('error', 'Only approved payments can be cancelled.');
-        }
-
+        // Reverse
         $payment->update([
-            'status' => 'cancelled',
-            'cancelled_at' => now(),
-            'notes' => ($payment->notes ?? '') . ' [Cancelled]',
+            'status'            => 'cancelled',
+            'correction_reason' => $request->correction_reason,
         ]);
 
-        return back()->with('success', 'Payment has been cancelled.');
+        return back()->with('success', 'Payment cancelled.');
     }
 
 
-    public function reissue(Request $request, Payment $payment)
-    {
-        if ($payment->status !== 'cancelled') {
-            return back()->with('error', 'Payment must be cancelled before re-issuing.');
-        }
 
-        $validated = $request->validate([
+    /* ============================================================
+     * REISSUE PAYMENT FORM
+     * ============================================================ */
+    public function reissueForm($id)
+    {
+        $payment = Payment::findOrFail($id);
+
+        return view('payments.reissue', compact('payment'));
+    }
+
+
+
+    /* ============================================================
+     * REISSUE PAYMENT (Corrected Amount)
+     * ============================================================ */
+    public function reissue(Request $request, $id)
+    {
+        $request->validate([
             'amount' => 'required|numeric|min:1',
-            'method' => 'required|string',
-            'payment_date' => 'required|date',
-            'notes' => 'nullable|string'
+            'correction_reason' => 'required|string',
         ]);
+
+        $old = Payment::findOrFail($id);
 
         // Create corrected payment
-        $new = $payment->project->payments()->create([
-            'amount' => $validated['amount'],
-            'method' => $validated['method'],
-            'payment_date' => $validated['payment_date'],
-            'notes' => '[Re-Issued] ' . ($validated['notes'] ?? ''),
-            'status' => 'approved',  // or pending if you require approval
-            'issued_from_payment_id' => $payment->id, // audit link
+        $new = Payment::create([
+            'project_id'      => $old->project_id,
+            'amount'          => $request->amount,
+            'payment_method'  => $old->payment_method,
+            'payment_date'    => now(),
+            'notes'           => "Reissued payment",
+            'status'          => 'approved',
+            'submitted_by'    => auth()->id(),
+            'approved_by'     => auth()->id(),
+            'reversal_of'     => $old->id,
+            'correction_reason' => $request->correction_reason,
         ]);
 
-        return redirect()
-            ->route('projects.show', $payment->project_id)
-            ->with('success', 'Corrected payment re-issued successfully.');
+        // Mark old as cancelled
+        $old->update([
+            'status' => 'cancelled'
+        ]);
+
+        return redirect()->route('payments.index')
+            ->with('success', 'Payment reissued successfully.');
     }
-
-    public function reissueForm(Payment $payment)
-    {
-        if ($payment->status !== 'cancelled') {
-            return back()->with('error', 'Payment must be cancelled before re-issuing.');
-        }
-
-        $project = $payment->project;
-
-        return view('payments.reissue', compact('payment', 'project'));
-    }
-
 }

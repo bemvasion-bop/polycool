@@ -9,30 +9,23 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-        Schema::create('payroll_runs', function (Blueprint $table) {
-            $table->id();
-
-            // Payroll type: office staff OR field workers
-            $table->enum('payroll_type', ['office', 'field']);
-
-            $table->date('period_start');
-            $table->date('period_end');
-
-            $table->enum('status', ['draft', 'finalized'])->default('draft');
-
-            // totals summarized AFTER finalization
-            $table->decimal('total_gross', 12, 2)->default(0);
-            $table->decimal('total_deductions', 12, 2)->default(0);
-            $table->decimal('total_net', 12, 2)->default(0);
-
-            // audit logging
-            $table->foreignId('generated_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('finalized_by')->nullable()->constrained('users')->nullOnDelete();
-
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('payroll_runs')) {
+            Schema::create('payroll_runs', function (Blueprint $table) {
+                $table->id();
+                $table->enum('payroll_type', ['office', 'field']);
+                $table->date('period_start');
+                $table->date('period_end');
+                $table->enum('status', ['draft', 'finalized'])->default('draft');
+                $table->decimal('total_gross', 12, 2)->default('0');
+                $table->decimal('total_deductions', 12, 2)->default('0');
+                $table->decimal('total_net', 12, 2)->default('0');
+                $table->unsignedBigInteger('generated_by');
+                $table->unsignedBigInteger('finalized_by')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

@@ -50,7 +50,12 @@
             @if ($quotation->status === 'pending')
             <form action="{{ route('quotations.approve', $quotation->id) }}" method="POST">
                 @csrf
-                <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                <button
+                    onclick="
+                    if(!navigator.onLine){
+                        saveOffline('approve_quotation', {quotation_id: {{ $quotation->id }}});
+                        event.preventDefault();
+                    }">
                     Approve
                 </button>
             </form>
@@ -70,7 +75,12 @@
             @if ($quotation->status === 'approved')
             <form action="{{ route('quotations.convert-to-project', $quotation->id) }}" method="POST">
                 @csrf
-                <button class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                <button
+                    onclick="
+                    if(!navigator.onLine){
+                        saveOffline('convert_project', {quotation_id: {{ $quotation->id }}});
+                        event.preventDefault();
+                    }">
                     Convert to Project
                 </button>
             </form>
