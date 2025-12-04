@@ -1,11 +1,56 @@
 @extends('layouts.app')
 
+@section('page-header')
+
+{{-- iOS Back Button --}}
+<a href="{{ route('quotations.index') }}" class="ios-back-btn mb-4 inline-flex">
+    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+    <span>Back</span>
+</a>
+
+<h2 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    Quotation Details
+</h2>
+
+@endsection
+
+
+
 @section('content')
+
+{{-- ================================ --}}
+{{-- iOS Back Button Styling --}}
+{{-- ================================ --}}
+<style>
+    .ios-back-btn {
+        padding: 8px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.65);
+        background: rgba(255,255,255,0.45);
+        backdrop-filter: blur(12px);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        color: #1a1a1a;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transition: .2s ease;
+    }
+    .ios-back-btn:hover {
+        background: rgba(255,255,255,0.75);
+        transform: translateY(-1px);
+    }
+</style>
+
+
 <div class="p-10">
     <div class="max-w-5xl mx-auto bg-white shadow rounded-lg p-8">
 
-        <h2 class="text-2xl font-semibold mb-4">Quotation Details</h2>
 
+        {{-- ================================ --}}
+        {{-- HEADER INFO --}}
+        {{-- ================================ --}}
         <div class="flex justify-between items-start mb-6">
             <div>
                 <p class="text-sm text-gray-500">
@@ -29,14 +74,12 @@
             <img src="/logo.png" alt="Logo" class="h-10">
         </div>
 
-        {{-- ACTION BUTTONS --}}
-        <div class="flex space-x-4 mb-6">
 
-            {{-- Back --}}
-            <a href="{{ route('quotations.index') }}"
-                class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
-                Back
-            </a>
+
+        {{-- ================================ --}}
+        {{-- ACTION BUTTONS --}}
+        {{-- ================================ --}}
+        <div class="flex space-x-4 mb-6">
 
             {{-- Edit --}}
             @if ($quotation->status !== 'converted')
@@ -71,7 +114,7 @@
             </form>
             @endif
 
-            {{-- Convert to Project (ONLY when approved) --}}
+            {{-- Convert to Project --}}
             @if ($quotation->status === 'approved')
             <form action="{{ route('quotations.convert-to-project', $quotation->id) }}" method="POST">
                 @csrf
@@ -88,14 +131,21 @@
 
         </div>
 
-        {{-- CLIENT INFORMATION --}}
+
+
+        {{-- ================================ --}}
+        {{-- CLIENT INFO --}}
+        {{-- ================================ --}}
         <h3 class="text-xl font-semibold mb-2">Client Information</h3>
         <p><strong>Client Name:</strong> {{ $quotation->client->name }}</p>
         <p><strong>Address:</strong> {{ $quotation->address }}</p>
 
         <hr class="my-6">
 
-        {{-- PROJECT INFORMATION --}}
+
+        {{-- ================================ --}}
+        {{-- PROJECT INFO --}}
+        {{-- ================================ --}}
         <h3 class="text-xl font-semibold mb-2">Project Information</h3>
         <p><strong>Project / Vessel Name:</strong> {{ $quotation->project_name }}</p>
         <p><strong>System:</strong> {{ $quotation->system }}</p>
@@ -106,7 +156,11 @@
 
         <hr class="my-6">
 
-        {{-- PARTICULARS TABLE --}}
+
+
+        {{-- ================================ --}}
+        {{-- PARTICULARS --}}
+        {{-- ================================ --}}
         <h3 class="text-xl font-semibold mb-2">Particulars</h3>
 
         <table class="w-full border text-left mb-6">
@@ -128,7 +182,11 @@
             </tbody>
         </table>
 
-        {{-- COSTING SUMMARY --}}
+
+
+        {{-- ================================ --}}
+        {{-- COST SUMMARY --}}
+        {{-- ================================ --}}
         <h3 class="text-xl font-semibold mb-2">Costing Summary</h3>
 
         <div class="grid grid-cols-2 gap-6">
@@ -146,16 +204,22 @@
                 </p>
                 <p><strong>Balance:</strong> ₱{{ number_format($quotation->balance, 2) }}</p>
             </div>
+
         </div>
 
         <hr class="my-6">
 
-        {{-- CONDITIONS --}}
+
+        {{-- ================================ --}}
+        {{-- TERMS & CONDITIONS --}}
+        {{-- ================================ --}}
         <h3 class="text-xl font-semibold mb-2">Terms & Conditions</h3>
+
         <p class="whitespace-pre-line text-gray-700">
             {{ $quotation->conditions }}
         </p>
 
     </div>
 </div>
+
 @endsection

@@ -175,7 +175,8 @@ class Project extends Model
      |  WARNING SYSTEM
      ========================================================================= */
 
-    public function getWarningsAttribute()
+
+     public function getWarningsAttribute()
     {
         $warnings = [];
 
