@@ -2,119 +2,167 @@
 
 @section('title', 'Accounting Dashboard')
 
-@section('content')
-<div class="p-6">
-
-    <h1 class="text-2xl font-semibold mb-6">Accounting Dashboard</h1>
-
-    {{-- TOP CARDS --}}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-        <div class="bg-white p-6 rounded shadow">
-            <p class="text-sm text-gray-500">Pending Payments</p>
-            <p class="text-3xl font-bold text-purple-700">{{ $pendingPayments }}</p>
-        </div>
-
-        <div class="bg-white p-6 rounded shadow">
-            <p class="text-sm text-gray-500">Approved (This Month)</p>
-            <p class="text-3xl font-bold text-green-600">₱{{ number_format($approvedPayments,2) }}</p>
-        </div>
-
-        <div class="bg-white p-6 rounded shadow">
-            <p class="text-sm text-gray-500">Expenses (This Month)</p>
-            <p class="text-3xl font-bold text-red-600">₱{{ number_format($monthlyExpenses,2) }}</p>
-        </div>
-
-        <div class="bg-white p-6 rounded shadow">
-            <p class="text-sm text-gray-500">Cash Advance Pending</p>
-            <p class="text-3xl font-bold text-blue-600">{{ $cashAdvancePending }}</p>
-        </div>
-
-    </div>
-
-    {{-- PROFIT --}}
-    <div class="bg-white p-6 rounded shadow mt-6">
-        <p class="text-lg font-semibold">Profit Snapshot</p>
-        <p class="text-3xl font-bold mt-2 {{ $profit < 0 ? 'text-red-600' : 'text-green-600' }}">
-            ₱{{ number_format($profit,2) }}
-        </p>
-    </div>
-
-    {{-- CHARTS --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-
-        {{-- Monthly Expense Trend --}}
-        <div class="bg-white p-6 rounded shadow">
-            <h3 class="text-xl mb-4">Monthly Expense Trend</h3>
-            <canvas id="expenseTrendChart"></canvas>
-        </div>
-
-        {{-- Expense Breakdown --}}
-        <div class="bg-white p-6 rounded shadow">
-            <h3 class="text-xl mb-4">Expense Breakdown</h3>
-            <canvas id="expenseBreakdownChart"></canvas>
-        </div>
-
-        {{-- Payment Summary --}}
-        <div class="bg-white p-6 rounded shadow col-span-full">
-            <h3 class="text-xl mb-4">Payment Summary</h3>
-            <canvas id="paymentSummaryChart"></canvas>
-        </div>
-
-    </div>
-
-</div>
+@section('page-header')
+    <h1 class="text-3xl font-semibold text-gray-800 tracking-tight">Accounting Dashboard</h1>
 @endsection
 
-@section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@section('content')
 
-<script>
-    const expenseTrendLabels = {!! json_encode($expenseTrend->keys()) !!};
-    const expenseTrendData = {!! json_encode($expenseTrend->values()) !!};
+<style>
+    .glass-card {
+        border-radius: 26px;
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(26px) saturate(180%);
+        -webkit-backdrop-filter: blur(26px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.45);
+        box-shadow: 0 20px 55px rgba(0,0,0,0.08);
+        padding: 28px 32px;
+    }
+    .status-pill {
+        padding: 5px 14px;
+        border-radius: 22px;
+        font-size: 12px;
+        font-weight: 600;
+        width: max-content;
+    }
+    .pending { background: #fff2ce; color: #B98500; }
+    .approved { background: #d4fce1; color: #007443; }
+    .rejected { background: #ffcfcf; color: #8A0E0E; }
+</style>
 
-    new Chart(document.getElementById('expenseTrendChart'), {
-        type: 'line',
-        data: {
-            labels: expenseTrendLabels,
-            datasets: [{
-                label: "Expenses (PHP)",
-                data: expenseTrendData,
-                borderColor: "#4F46E5",
-                backgroundColor: "rgba(79,70,229,0.2)",
-                tension: 0.4
-            }]
-        }
-    });
+{{-- ============================================================ --}}
+{{-- 🌈 KPI CARDS --}}
+{{-- ============================================================ --}}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
 
-    const breakdownLabels = {!! json_encode($expenseBreakdown->keys()) !!};
-    const breakdownData = {!! json_encode($expenseBreakdown->values()) !!};
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Pending Payments</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ $pendingPayments }}</p>
+    </div>
 
-    new Chart(document.getElementById('expenseBreakdownChart'), {
-        type: 'bar',
-        data: {
-            labels: breakdownLabels,
-            datasets: [{
-                label: "Expenses (PHP)",
-                data: breakdownData,
-                backgroundColor: "#10B981"
-            }]
-        }
-    });
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Cash Advances</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ $cashAdvancePending }}</p>
+    </div>
 
-    const paymentLabels = Object.keys(@json($paymentSummary));
-    const paymentData = Object.values(@json($paymentSummary));
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Approved Payments (This Month)</p>
+        <p class="text-3xl font-semibold text-gray-900">₱{{ number_format($approvedPayments, 2) }}</p>
+    </div>
 
-    new Chart(document.getElementById('paymentSummaryChart'), {
-        type: 'bar',
-        data: {
-            labels: paymentLabels,
-            datasets: [{
-                label: "Count",
-                data: paymentData,
-                backgroundColor: ["#F59E0B", "#10B981", "#EF4444"]
-            }]
-        }
-    });
-</script>
+
+    {{--
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Reversal History</p>
+        <p class="text-3xl font-semibold text-gray-900">{{ $reversalCount }}</p>
+    </div>
+    --}}
+
+</div>
+
+
+{{-- ============================================================ --}}
+{{-- 🧾 PENDING PAYMENTS --}}
+{{-- ============================================================ --}}
+<div class="glass-card mb-8">
+    <h2 class="text-lg font-semibold mb-4">Pending Payments</h2>
+
+    <table class="w-full text-sm">
+        <thead class="border-b border-gray-300">
+            <tr>
+                <th class="text-left py-2">Project</th>
+                <th class="text-left py-2">Client</th>
+                <th class="text-left py-2">Amount</th>
+                <th class="text-left py-2">Submitted By</th>
+                <th class="text-left py-2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($pendingPaymentList as $pay)
+                <tr class="border-b border-gray-200">
+                    <td class="py-3">{{ $pay->project->project_name }}</td>
+                    <td>{{ $pay->project->client->client_name }}</td>
+                    <td>₱{{ number_format($pay->amount, 2) }}</td>
+                    <td>{{ $pay->submittedBy->name }}</td>
+                    <td>
+                        <button class="text-green-600 hover:underline">Approve</button>
+                        <button class="text-red-600 hover:underline">Reject</button>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="5" class="py-4 text-center text-gray-500">No pending payments.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
+
+{{-- ============================================================ --}}
+{{-- 📦 PENDING EXPENSES --}}
+{{-- ============================================================ --}}
+<div class="glass-card mb-8">
+    <h2 class="text-lg font-semibold mb-4">Pending Expenses</h2>
+
+    <table class="w-full text-sm">
+        <thead class="border-b border-gray-300">
+            <tr>
+                <th class="text-left py-2">Type</th>
+                <th class="text-left py-2">Amount</th>
+                <th class="text-left py-2">Submitted By</th>
+                <th class="text-left py-2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($pendingExpenseList as $exp)
+                <tr class="border-b border-gray-200">
+                    <td class="py-3">{{ ucfirst($exp->expense_type) }}</td>
+                    <td>₱{{ number_format($exp->total_cost ?? $exp->amount, 2) }}</td>
+                    <td>{{ $exp->submittedBy->name ?? '—' }} </td>
+                    <td>
+                        <button class="text-green-600 hover:underline">Approve</button>
+                        <button class="text-red-600 hover:underline">Reject</button>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="4" class="py-4 text-center text-gray-500">No pending expenses.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
+
+{{-- ============================================================ --}}
+{{-- 🔄 REVERSAL HISTORY --}}
+{{-- ============================================================ --}}
+<div class="glass-card mb-10">
+    <h2 class="text-lg font-semibold mb-4">Reversal History</h2>
+
+    <table class="w-full text-sm">
+        <thead class="border-b border-gray-300">
+            <tr>
+                <th class="text-left py-2">Reference</th>
+                <th class="text-left py-2">Type</th>
+                <th class="text-left py-2">Amount</th>
+                <th class="text-left py-2">Date</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {{--
+            @forelse($reversals as $rev)
+                <tr class="border-b border-gray-200">
+                    <td class="py-3">{{ $rev->reference_id }}</td>
+                    <td>{{ ucfirst($rev->type) }}</td>
+                    <td>₱{{ number_format($rev->amount, 2) }}</td>
+                    <td>{{ \Carbon\Carbon::parse($rev->created_at)->format('M d, Y') }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="4" class="py-4 text-center text-gray-500">No reversals yet.</td></tr>
+            @endforelse
+
+            --}}
+        </tbody>
+    </table>
+</div>
+
 @endsection

@@ -207,9 +207,9 @@ $groups = [
             </div>
 
             <div class="mt-3 flex justify-end">
-                <a href="{{ route('projects.show',$project) }}" class="view-btn">
-                    View <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </a>
+                <a href="{{ route('projects.show', $project) }}" class="view-btn">
+                View <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </a>
             </div>
 
         </div>

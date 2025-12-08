@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\User;
 use App\Models\Material;
 use App\Models\ProjectExtraWork;
+use App\Models\ProjectProgressLog;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Services\WeatherService;
@@ -53,7 +54,7 @@ class ProjectController extends Controller
         // Financials
         $basePrice         = $project->base_contract_price;
         $extraWorkTotal    = $project->extra_work_total;
-        $totalProjectPrice = $project->final_project_price;
+        $totalProjectPrice = $project->total_price ?? 0;
 
         $totalPaid = $project->payments()
             ->where('status', 'approved')
@@ -80,6 +81,18 @@ class ProjectController extends Controller
         $payments = $project->payments()->orderBy('created_at', 'desc')->get();
 
 
+        if ($project->progress >= 100 && $remainingBalance <= 0) {
+            if ($project->status !== 'completed') {
+                $project->update(['status' => 'completed']);
+            }
+        }
+
+        $baseContract = $project->quotation->contract_price ?? 0;
+        $extraTotal   = $project->approvedExtraWorks()->sum('amount');
+        $totalPaid    = $project->approvedPayments()->sum('amount');
+        $totalProject = $baseContract + $extraTotal;
+        $remaining    = $totalProject - $totalPaid;
+
         return view('projects.show', compact(
   'project',
  'payments',
@@ -93,6 +106,10 @@ class ProjectController extends Controller
             'totalApprovedExpenses',
             'remainingAfterExpenses',
             'weatherData',
+            'baseContract',
+            'extraTotal',
+            'totalProject',
+            'remaining',
         ));
     }
 
@@ -245,20 +262,61 @@ class ProjectController extends Controller
         return back()->with('success', 'Extra work added to project.');
     }
 
-    /**
-     * Delete an extra work line.
-     */
-    public function destroyExtraWork(Project $project, ProjectExtraWork $extraWork)
+
+
+
+    public function storeProgress(Request $request, Project $project)
     {
-        // Safety: ensure it belongs to this project
+        $data = $request->validate([
+            'log_date'       => 'required|date',
+            'bdft_completed' => 'required|numeric|min:0',
+            'notes'          => 'nullable|string|max:500',
+        ]);
+
+        // Prevent over logging total bd.ft
+        $totalBdft = $project->quotation->total_bdft ?? 0;
+        $loggedBdft = $project->progressLogs()->sum('bdft_completed');
+        $newTotal = $loggedBdft + $data['bdft_completed'];
+
+        if ($newTotal > $totalBdft) {
+            return back()->withErrors(['bdft_completed' => 'Cannot exceed the total project bd.ft']);
+        }
+
+        $data['project_id'] = $project->id;
+        $data['user_id'] = auth()->id();
+
+        ProjectProgressLog::create($data);
+
+        return back()->with('success', 'Progress logged successfully.');
+    }
+
+    public function approveExtraWork(Project $project, ProjectExtraWork $extraWork)
+    {
         if ($extraWork->project_id !== $project->id) {
             abort(404);
         }
 
-        $extraWork->delete();
+        $extraWork->status = 'approved';
+        $extraWork->save();
 
-        return back()->with('success', 'Extra work entry removed.');
+        // AUTO-UPDATE PROJECT FINANCIALS (Recalculate using current approved extra works)
+        $approvedTotal = $project->extraWorks()->where('status', 'approved')->sum('amount');
+        $project->total_extra_cost = $approvedTotal;
+        $project->save();
+
+        return back()->with('success', 'Extra work approved and financials updated.');
     }
 
 
+    public function rejectExtraWork(Project $project, ProjectExtraWork $extraWork)
+    {
+        if ($extraWork->project_id !== $project->id) {
+            abort(404);
+        }
+
+        $extraWork->status = 'rejected';
+        $extraWork->save();
+
+        return back()->with('success', 'Extra work was rejected.');
+    }
 }

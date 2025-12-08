@@ -223,4 +223,44 @@ class Project extends Model
 
         return ['type' => 'ok', 'text' => 'No issues'];
     }
+
+
+    public function progressLogs()
+    {
+        return $this->hasMany(ProjectProgressLog::class);
+    }
+
+
+    public function getBdftProgressAttribute()
+    {
+        $total = $this->quotation->total_bdft ?? 0;
+        if ($total == 0) return 0;
+
+        $logged = $this->progressLogs()->sum('bdft_completed');
+        $percentage = ($logged / $total) * 100;
+
+        return round(min($percentage, 100), 2);
+    }
+
+
+    public function approvedExtraWorks()
+    {
+        return $this->extraWorks()->where('status', 'approved');
+    }
+
+
+    public function approvedPayments()
+    {
+        return $this->payments()->where('status', 'approved');
+    }
+
+
+    public function attendanceLogs()
+    {
+        return $this->hasMany(AttendanceLog::class, 'project_id');
+    }
+
+
+
+
 }

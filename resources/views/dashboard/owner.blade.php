@@ -42,57 +42,9 @@
     opacity: 0.3;
 }
 
-<<<<<<< HEAD
-
-        <button id="syncBtn"
-            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg">
-            Sync Data to Cloud
-        </button>
-
-        <script>
-        document.getElementById('syncBtn').addEventListener('click', function () {
-            if (!confirm("Sync all pending data to cloud?")) return;
-
-            let btn = this;
-            btn.disabled = true;
-            btn.innerHTML = 'Syncing... ⏳';
-
-            fetch("{{ route('sync.all') }}", {
-                method: "POST",
-                headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                    "Accept": "application/json"
-                },
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message ?? "Sync completed!");
-            })
-            .catch(() => {
-                alert("Sync failed! Check network.");
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = 'Sync Data to Cloud';
-            });
-        });
-        </script>
-
-
-    </div>
-
-
-
-
-    {{-- ======================= --}}
-    {{-- TOP CARDS --}}
-    {{-- ======================= --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-=======
 .kpi-purple { background: linear-gradient(to bottom right, #dcd6f7, #c8c2f4); }
 .kpi-blue   { background: linear-gradient(to bottom right, #d8e9ff, #c2dbff); }
 .kpi-pink   { background: linear-gradient(to bottom right, #ffd6ec, #ffc2e3); }
->>>>>>> 1c501e3504de40feb6bb86d38e1175668b1b812d
 
 .kpi-label {
     font-size: 12px;
@@ -282,19 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 backgroundColor: ['#4ade80','#60a5fa','#facc15']
             }]
         },
-<<<<<<< HEAD
-        options: {
-            indexAxis: 'y',
-            plugins: { legend: { display: false }},
-            responsive: true,
-            scales: {
-                x: { stacked: true, beginAtZero: true },
-                y: { stacked: true }
-            }
-        }
-=======
         options: { indexAxis: 'y', responsive: true }
->>>>>>> 1c501e3504de40feb6bb86d38e1175668b1b812d
     });
 
     new Chart(document.getElementById('expenseChart'), {

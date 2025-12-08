@@ -23,89 +23,67 @@
 
     <div class="bg-white p-6 shadow rounded">
         <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-gray-100">
-                    <th class="p-3 border">Project</th>
-                    <th class="p-3 border">Amount</th>
-                    <th class="p-3 border">Method</th>
-                    <th class="p-3 border">Date</th>
-                    <th class="p-3 border">Status</th>
-                    <th class="p-3 border">Added By</th>
-                    <th class="p-3 border">Approved By</th>
-                    <th class="p-3 border w-48">Actions</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @forelse($payments as $payment)
-                <tr class="border-b">
-
-                    <td class="p-3">{{ $payment->project->project_name ?? '—' }}</td>
-
-                    <td class="p-3">₱{{ number_format($payment->amount, 2) }}</td>
-
-                    <td class="p-3">{{ ucfirst($payment->payment_method) }}</td>
-
-                    <td class="p-3">{{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</td>
-
-                    {{-- Status Badge --}}
-                    <td class="p-3">
-                        @if($payment->status === 'pending')
-                            <span class="px-3 py-1 bg-yellow-400 text-black rounded">Pending</span>
-                        @elseif($payment->status === 'approved')
-                            <span class="px-3 py-1 bg-green-600 text-white rounded">Approved</span>
-                        @else
-                            <span class="px-3 py-1 bg-red-500 text-white rounded">Rejected</span>
-                        @endif
-                    </td>
-
-                    <td class="p-3">
-                        {{ $payment->addedBy->full_name ?? '—' }}
-                    </td>
-
-                    <td class="p-3">
-                        {{ $payment->approvedBy->full_name ?? '—' }}
-                    </td>
-
-                    {{-- Actions --}}
-                    <td class="p-3 flex space-x-4">
-
-                    {{-- VIEW --}}
-                    <a href="{{ route('payments.show', $payment->id) }}" class="text-blue-600 hover:underline">
-                        View
-                    </a>
-
-                    {{-- APPROVE / REJECT (Accounting Only) --}}
-                    @if($payment->status === 'approved')
-                        <span class="px-3 py-1 text-sm bg-green-500 text-white rounded">Approved</span>
-                    @elseif($payment->status === 'cancelled')
-                        <span class="px-3 py-1 text-sm bg-red-500 text-white rounded">Cancelled</span>
-                    @else
-                        <span class="px-3 py-1 text-sm bg-gray-300 rounded">Pending</span>
-                    @endif
-
-                    {{-- PRINT PDF (Owner/Accounting/Audit only)
-                    @if(in_array(auth()->user()->system_role, ['owner','accounting','audit']))
-                        <a href="{{ route('payments.pdf', $payment->id) }}" class="text-purple-700 ml-4">Print</a>
-                    @endif
-                     --}}
-
-
-                    @if($payment->status === 'cancelled')
-                        <span class="px-2 py-1 bg-red-100 text-red-600 text-xs rounded">Cancelled</span>
-                    @endif
-                </td>
-
-
-                </tr>
-                @empty
+            <thead class="bg-gray-100">
                     <tr>
-                        <td colspan="8" class="text-center text-gray-500 p-4">
-                            No payments recorded yet.
+                        <th class="p-3 border">Project</th>
+                        <th class="p-3 border">Amount</th>
+                        <th class="p-3 border">Method</th>
+                        <th class="p-3 border">Date</th>
+                        <th class="p-3 border">Status</th>
+                        <th class="p-3 border">Added By</th>
+                        <th class="p-3 border">Approved By</th>
+                        <th class="p-3 border">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                @foreach($payments as $payment)
+                    <tr class="border-b">
+                        <td class="p-3 border">
+                            {{ $payment->project->project_name }}
+                        </td>
+
+                        <td class="p-3 border">
+                            ₱{{ number_format($payment->amount, 2) }}
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ ucfirst($payment->payment_method) }}
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}
+                        </td>
+
+                        <td class="p-3 border">
+                            @if($payment->status === 'pending')
+                                <span class="px-2 py-1 bg-yellow-400 text-black rounded text-sm">Pending</span>
+                            @elseif($payment->status === 'approved')
+                                <span class="px-2 py-1 bg-green-600 text-white rounded text-sm">Approved</span>
+                            @elseif($payment->status === 'rejected')
+                                <span class="px-2 py-1 bg-red-600 text-white rounded text-sm">Rejected</span>
+                            @elseif($payment->status === 'reversed')
+                                <span class="px-2 py-1 bg-gray-600 text-white rounded text-sm">Reversed</span>
+                            @endif
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ optional($payment->addedBy)->full_name ?? '—' }}
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ optional($payment->approvedBy)->full_name ?? '—' }}
+                        </td>
+
+                        {{-- ONLY RIGHT SIDE ACTION BUTTON --}}
+                        <td class="p-3 border">
+                            <a href="{{ route('payments.show', $payment->id) }}"
+                            class="text-purple-600 hover:underline">View</a>
                         </td>
                     </tr>
-                @endforelse
-            </tbody>
+                @endforeach
+                </tbody>
+
 
         </table>
     </div>

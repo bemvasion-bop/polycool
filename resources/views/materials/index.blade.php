@@ -47,12 +47,16 @@
                         <a href="{{ route('materials.edit', $material) }}"
                             class="text-yellow-600 hover:underline mx-3">Edit</a>
 
+
+                            {{--
                         <form action="{{ route('materials.destroy', $material) }}"
                               method="POST" class="inline"
                               onsubmit="return confirm('Delete this material?')">
                             @csrf @method('DELETE')
                             <button class="text-red-600 hover:underline">Delete</button>
                         </form>
+                         --}}
+
                     </td>
                 </tr>
                 @empty

@@ -14,10 +14,12 @@ class ProjectPolicy
 
     public function view(User $user, Project $project)
     {
-        if (in_array($user->system_role, ['owner','manager','audit','accounting'])) {
+        // Owners & Accounting & Managers: full access
+        if (in_array($user->system_role, ['owner', 'manager', 'accounting'])) {
             return true;
         }
 
+        // Employees: only if assigned to project
         return $project->users->contains($user->id);
     }
 

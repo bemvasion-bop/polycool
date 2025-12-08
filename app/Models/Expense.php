@@ -12,44 +12,34 @@ class Expense extends Model
     protected $fillable = [
         'project_id',
         'user_id',
-
-        // MATERIAL EXPENSE FIELDS
         'material_id',
-        'supplier_id',
-        'unit_cost',
-        'quantity_used',
-        'total_cost',
-
-        // CUSTOM CATEGORY EXPENSE FIELDS
         'category',
         'amount',
-        'description',
-
-        'expense_date',
-        'receipt_path',
+        'total_cost',
         'status',
-
-        'reversal_of',
+        'processed_by',
+        'processed_reason',
+        'is_reversal',
+        'original_amount',
         'corrected_by',
         'correction_reason',
+        'expense_date',
+        'description'
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
 
-    // An expense belongs to one project
+
+    /* ================================
+       RELATIONSHIPS
+    ================================= */
     public function project()
     {
         return $this->belongsTo(Project::class);
     }
 
-    // An expense is submitted by one user (employee/manager)
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function material()
@@ -57,8 +47,33 @@ class Expense extends Model
         return $this->belongsTo(Material::class);
     }
 
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function reversedExpense()
+    {
+        return $this->belongsTo(Expense::class, 'reversal_of');
+    }
+
     public function correctedBy()
     {
-        return $this->belongsTo(User::class, 'corrected_by');
+    return $this->belongsTo(User::class, 'corrected_by');
+    }
+
+    public function processedBy()
+    {
+        return $this->belongsTo(User::class, 'processed_by');
+    }
+
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function history()
+    {
+        return $this->hasMany(ExpenseHistory::class);
     }
 }

@@ -98,10 +98,14 @@
                         View
                     </a>
 
+                    {{--
                     <a href="{{ route('clients.edit', $client->id) }}"
                        class="text-green-600 hover:text-green-700 font-medium">
                         Edit
                     </a>
+                    --}}
+
+
                 </td>
 
             </tr>

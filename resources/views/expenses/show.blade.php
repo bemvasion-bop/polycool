@@ -89,32 +89,48 @@
             </div>
         @endif
 
-        {{-- Approve / Reject shortcuts (only for owner + accounting on pending) --}}
-        @if($expense->status === 'pending' && in_array(auth()->user()->system_role, ['owner','accounting']))
-            <div class="pt-4 border-t flex gap-3">
+        {{-- Approve / Reject shortcuts (only for owner on pending) --}}
+            @if($expense->status === 'pending' && auth()->user()->system_role === 'owner')
+                <div class="pt-4 border-t flex gap-3">
 
-                <form action="{{ route('expenses.approve', $expense) }}"
-                      method="POST"
-                      onsubmit="return confirm('Approve this expense?');">
-                    @csrf
-                    <button type="submit"
-                            class="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
-                        Approve
+                    <form action="{{ route('expenses.approve', $expense) }}"
+                        method="POST">
+                        @csrf
+                        <button type="submit"
+                                class="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                            Approve
+                        </button>
+                    </form>
+
+                    <form action="{{ route('expenses.reject', $expense) }}"
+                        method="POST">
+                        @csrf
+                        <button type="submit"
+                                class="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                            Reject
+                        </button>
+                    </form>
+
+                </div>
+            @endif
+
+
+            {{-- Re-Issue (only Manager can see when reversed) --}}
+            @if($expense->status === 'reversed'
+                && auth()->user()->system_role === 'manager')
+                <div class="pt-4 border-t">
+
+                    <button onclick="showExpenseReIssueModal({{ $expense->id }})"
+                        class="px-4 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                        Re-Issue Expense
                     </button>
-                </form>
 
-                <form action="{{ route('expenses.reject', $expense) }}"
-                      method="POST"
-                      onsubmit="return confirm('Reject this expense?');">
-                    @csrf
-                    <button type="submit"
-                            class="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700">
-                        Reject
-                    </button>
-                </form>
+                </div>
+            @endif
 
-            </div>
-        @endif
+
+
+
 
     </div>
 </div>

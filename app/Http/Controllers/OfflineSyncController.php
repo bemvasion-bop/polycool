@@ -11,7 +11,8 @@ class OfflineSyncController extends Controller
     {
         $item = $request->all();
 
-        if ($item['action'] === 'create_client') {
+        if (($item['action'] ?? null) === 'create_client') {
+
             $client = Client::create($item['data']);
             return response()->json([
                 'status' => 'success',

@@ -11,20 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->enum('sync_status', ['pending', 'synced'])
-                ->default('pending')
-                ->after('address');
+        Schema::table('expenses', function (Blueprint $table) {
+            $table->unsignedBigInteger('approved_status_by')->nullable()->after('status');
         });
     }
-
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn('sync_status');
+        Schema::table('expenses', function (Blueprint $table) {
+            $table->dropColumn('approved_status_by');
         });
     }
-
-
-
 };

@@ -7,13 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 class Client extends Model
 {
     //
+
+
+    public $timestamps = false;
+
     protected $fillable = [
         'name',
         'contact_person',
         'email',
         'phone',
         'address',
+        'sync_status',
     ];
+
 
     public function projects()
     {

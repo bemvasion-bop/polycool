@@ -23,6 +23,7 @@ class Payment extends Model
         'reversal_of',
         'corrected_by',
         'correction_reason',
+        'corrected_at',
     ];
 
 
@@ -60,4 +61,11 @@ class Payment extends Model
     {
         return $this->belongsTo(User::class, 'corrected_by');
     }
+
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+
 }

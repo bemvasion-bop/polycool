@@ -229,26 +229,36 @@ class QuotationController extends Controller
      */
     public function approve(Quotation $quotation)
     {
-        if ($quotation->status === 'approved') {
-            return back()->with('info', 'Already approved.');
+        if ($quotation->status !== 'pending') {
+            return back()->with('error', 'Quotation cannot be approved.');
         }
 
-        if ($quotation->status === 'converted') {
-            return back()->with('error', 'Converted quotations cannot be approved.');
-        }
-
+        // Update quotation status
         $quotation->update(['status' => 'approved']);
 
-        return back()->with('success', 'Quotation approved.');
+        // Auto-create a Project
+        Project::create([
+            'quotation_id' => $quotation->id,
+            'client_id'    => $quotation->client_id,
+            'project_name' => $quotation->project_name,
+            'location'     => $quotation->address ?? null,
+            'total_price'  => $quotation->contract_price,
+            'start_date'   => $quotation->quotation_date, // TEMP until you set schedule
+            'status'       => 'pending', // IMPORTANT: Option A
+        ]);
+
+        return back()->with('success', 'Quotation approved! Project created.');
     }
+
 
     /**
      * Decline quotation.
      */
+
     public function decline(Quotation $quotation)
     {
-        if ($quotation->status === 'converted') {
-            return back()->with('error', 'Converted quotations cannot be declined.');
+        if ($quotation->status !== 'pending') {
+            return back()->with('error', 'Quotation cannot be declined.');
         }
 
         $quotation->update(['status' => 'declined']);

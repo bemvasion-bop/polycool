@@ -89,30 +89,19 @@
             </a>
             @endif
 
-            {{-- Approve --}}
-            @if ($quotation->status === 'pending')
-            <form action="{{ route('quotations.approve', $quotation->id) }}" method="POST">
-                @csrf
-                <button
-                    onclick="
-                    if(!navigator.onLine){
-                        saveOffline('approve_quotation', {quotation_id: {{ $quotation->id }}});
-                        event.preventDefault();
-                    }">
-                    Approve
-                </button>
-            </form>
+            {{-- Approve and Decline--}}
+            @if($quotation->status == 'pending')
+                <form action="{{ route('quotations.approve', $quotation->id) }}" method="POST" style="display:inline;">
+                    @csrf
+                    <button class="px-3 py-1 bg-green-600 text-white rounded text-sm">Approve</button>
+                </form>
+
+                <form action="{{ route('quotations.decline', $quotation->id) }}" method="POST" style="display:inline;">
+                    @csrf
+                    <button class="px-3 py-1 bg-red-600 text-white rounded text-sm">Decline</button>
+                </form>
             @endif
 
-            {{-- Decline --}}
-            @if ($quotation->status === 'pending')
-            <form action="{{ route('quotations.decline', $quotation->id) }}" method="POST">
-                @csrf
-                <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                    Decline
-                </button>
-            </form>
-            @endif
 
             {{-- Convert to Project --}}
             @if ($quotation->status === 'approved')

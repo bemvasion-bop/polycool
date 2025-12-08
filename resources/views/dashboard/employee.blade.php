@@ -14,15 +14,15 @@
 
             <p>
                 <strong>Time In:</strong>
-                {{ $todayLog->time_in 
-                    ? \Carbon\Carbon::parse($todayLog->time_in)->format('h:i A') 
+                {{ $todayLog->time_in
+                    ? \Carbon\Carbon::parse($todayLog->time_in)->format('h:i A')
                     : '—' }}
             </p>
 
             <p>
                 <strong>Time Out:</strong>
                 {{ $todayLog->time_out
-                    ? \Carbon\Carbon::parse($todayLog->time_out)->format('h:i A') 
+                    ? \Carbon\Carbon::parse($todayLog->time_out)->format('h:i A')
                     : '—' }}
             </p>
 
@@ -37,6 +37,8 @@
     {{-- RECENT LOGS --}}
     <div class="bg-white shadow p-6 rounded-lg">
         <h3 class="text-xl font-semibold mb-4">Recent Attendance Logs</h3>
+        @php $user = auth()->user(); @endphp
+
 
         <table class="w-full border-collapse">
             <thead>
@@ -52,21 +54,29 @@
 
             <tbody>
                 @forelse($assignedProjects as $proj)
-                    @foreach($proj->attendanceLogs->where('user_id', $user->id)->take(10) as $log)
+                    @php
+                        $logs = $proj->attendanceLogs()
+                            ->where('user_id', auth()->id())
+                            ->latest()
+                            ->take(10)
+                            ->get();
+                    @endphp
+
+                    @forelse($logs as $log)
                         <tr class="border-b">
                             <td class="p-2">{{ $log->date }}</td>
 
                             <td class="p-2">{{ $proj->project_name }}</td>
 
                             <td class="p-2">
-                                {{ $log->time_in 
-                                    ? \Carbon\Carbon::parse($log->time_in)->format('h:i A') 
+                                {{ $log->time_in
+                                    ? \Carbon\Carbon::parse($log->time_in)->format('h:i A')
                                     : '—' }}
                             </td>
 
                             <td class="p-2">
-                                {{ $log->time_out 
-                                    ? \Carbon\Carbon::parse($log->time_out)->format('h:i A') 
+                                {{ $log->time_out
+                                    ? \Carbon\Carbon::parse($log->time_out)->format('h:i A')
                                     : '—' }}
                             </td>
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\{
     CashAdvanceController,
     ClientController,
     DashboardController,
+    CloudSyncController,
     EmployeeController,
     ExpenseController,
     MaterialController,
@@ -16,6 +17,7 @@ use App\Http\Controllers\{
     ProjectController,
     QuotationController,
     SupplierController,
+    SyncAllController,
     WeatherController
 };
 
@@ -50,13 +52,10 @@ Route::middleware('auth')->get('/dashboard', function () {
 | 🟣 OFFLINE SYNC API
 |--------------------------------------------------------------------------
 */
-Route::post('/offline-sync', [App\Http\Controllers\SyncController::class, 'sync'])
+
+Route::post('/offline-sync', [\App\Http\Controllers\OfflineSyncController::class, 'process'])
     ->middleware('auth')
     ->name('offline.sync');
-
-
-Route::post('/offline-sync', [\App\Http\Controllers\OfflineSyncController::class, 'process']);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -76,17 +75,19 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
 
 
     // 🔄 SYNC ALL UNSYNCED DATA
-    Route::post('/sync-all', [DashboardController::class, 'syncAll'])->name('sync.all');
+    Route::post('/sync-all', [SyncAllController::class, 'syncAll'])
+        ->name('sync.all')
+        ->middleware('auth');
 
 
-
-
-    // Quotation actions
-    Route::get('/quotations/{q}/pdf', [QuotationController::class, 'downloadPdf'])->name('quotations.pdf');
-    Route::post('/quotations/{q}/approve', [QuotationController::class, 'approve'])->name('quotations.approve');
-    Route::post('/quotations/{q}/decline', [QuotationController::class, 'decline'])->name('quotations.decline');
-    Route::post('/quotations/{q}/convert-to-project', [QuotationController::class, 'convertToProject'])
+    // Quotations
+    Route::post('/quotations/{quotation}/approve', [QuotationController::class, 'approve'])
+        ->name('quotations.approve');
+    Route::post('/quotations/{quotation}/decline', [QuotationController::class, 'decline'])
+        ->name('quotations.decline');
+    Route::post('/quotations/{quotation}/convert-to-project', [QuotationController::class, 'convertToProject'])
         ->name('quotations.convert-to-project');
+
 
     // Attendance overrides
     Route::post('/attendance/{user}/time-in', [AttendanceController::class, 'manualTimeIn'])->name('attendance.manualIn');
@@ -95,8 +96,15 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
     Route::put('/attendance/{log}', [AttendanceController::class, 'update'])->name('attendance.update');
 
 
-    // Owner can view finance records only
-    Route::resource('expenses', ExpenseController::class)->only(['edit', 'update', 'destroy']);
+    Route::post('/expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])
+     ->name('expenses.cancel');
+
+     // EXPENSE APPROVAL WORKFLOW
+    Route::post('/expenses/{expense}/approve', [ExpenseController::class, 'approve'])
+        ->name('expenses.approve');
+
+    Route::post('/expenses/{expense}/reject', [ExpenseController::class, 'reject'])
+        ->name('expenses.reject');
 });
 
 
@@ -113,6 +121,22 @@ Route::middleware(['auth', 'role:manager'])->group(function () {
     // Manager can CREATE & SUBMIT expenses/payments
     Route::resource('expenses', ExpenseController::class)->only(['create', 'store']);
     Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::post('/expenses/{expense}/reissue', [ExpenseController::class, 'reissue'])
+     ->name('expenses.reissue');
+
+     // Re-Issue Expense (Manager Save)
+    Route::post('/expenses/{expense}/reissue-save',
+    [ExpenseController::class, 'saveReIssue'])
+    ->name('expenses.reissue-save');
+
+
+    // Adjust Material Quantity
+    //Route::post('/expenses/{expense}/adjust-quantity',
+    //  [ExpenseController::class, 'adjustMaterialQuantity'])
+    //        ->name('expenses.adjust-quantity');
+
+
+
 });
 
 
@@ -146,14 +170,18 @@ Route::middleware(['auth', 'role:employee'])->group(function () {
 Route::middleware(['auth', 'role:owner,manager'])->group(function () {
 
     Route::get('/projects/{project}', [ProjectController::class, 'show'])
-        ->middleware('can:view-project,project')
-        ->name('projects.show.employee');
+        ->middleware('can:view,project')
+        ->name('projects.show');
 
     Route::resource('projects', ProjectController::class)->except(['show']);
 
     Route::post('/projects/{project}/extra-work', [ProjectController::class, 'storeExtraWork'])->name('projects.extra-work.store');
     Route::delete('/projects/{project}/extra-work/{extraWork}', [ProjectController::class, 'destroyExtraWork'])
         ->name('projects.extra-work.destroy');
+    // Project Progress Logs
+    Route::post('/projects/{project}/progress', [ProjectController::class, 'storeProgress'])
+        ->name('projects.progress.store');
+
 
     Route::get('/attendance/scanner', function () {
         $projects = \App\Models\Project::orderBy('project_name')->get();
@@ -171,6 +199,32 @@ Route::middleware(['auth', 'role:owner,manager'])->group(function () {
 
     Route::get('/attendance/qr-generator', [AttendanceController::class, 'qrGenerator'])
         ->name('attendance.qrGenerator');
+
+    Route::post('/expenses/{id}/adjust-qty',
+        [ExpenseController::class, 'adjustQty']
+    )->name('expenses.adjustQty');
+
+
+
+    // ============================
+    // 🔹 EXPENSES ROUTES
+    // ============================
+    Route::resource('expenses', ExpenseController::class);
+
+    // Approval workflow
+    Route::post('/expenses/{expense}/approve', [ExpenseController::class, 'approve'])
+        ->name('expenses.approve');
+
+    Route::post('/expenses/{expense}/reject', [ExpenseController::class, 'reject'])
+        ->name('expenses.reject');
+
+    Route::post('/expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])
+        ->name('expenses.cancel');
+
+    Route::put('/expenses/{expense}/reissue', [ExpenseController::class, 'reissue'])
+        ->name('expenses.reissue');
+
+
 });
 
 
@@ -181,28 +235,109 @@ Route::middleware(['auth', 'role:owner,manager'])->group(function () {
 */
 Route::middleware(['auth', 'role:owner,accounting'])->group(function () {
 
-    // Payments
+    /* =======================
+       QUOTATIONS
+    ======================= */
+    Route::post('/quotations/{quotation}/approve', [QuotationController::class, 'approve'])
+        ->name('quotations.approve');
+
+    Route::post('/quotations/{quotation}/decline', [QuotationController::class, 'decline'])
+        ->name('quotations.decline');
+
+
+    /* =======================
+       PROJECTS
+    ======================= */
+    Route::post('/projects/{project}/extra-work/{extraWork}/approve',
+        [ProjectController::class, 'approveExtraWork'])->name('projects.extra-work.approve');
+
+    Route::post('/projects/{project}/extra-work/{extraWork}/reject',
+        [ProjectController::class, 'rejectExtraWork'])->name('projects.extra-work.reject');
+
+
+    /* =======================
+       PAYMENTS
+    ======================= */
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
+
+    // Approval Workflow
     Route::post('/payments/{payment}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
     Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
     Route::post('/payments/{payment}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
-    Route::post('/payments/{payment}/reissue', [PaymentController::class, 'reissue'])->name('payments.reissue');
 
-    // Expenses
-    Route::resource('expenses', ExpenseController::class)->only(['index', 'show']);
-    Route::post('/expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])->name('expenses.cancel');
-    Route::post('/expenses/{expense}/reissue', [ExpenseController::class, 'reissue'])->name('expenses.reissue');
 
-    // Cash Advance
+    // Edit Replacement Amount
+    Route::post('/payments/{payment}/update', [PaymentController::class, 'update'])
+        ->name('payments.update');
+
+    // History & Audit PDF
+    Route::get('/payments/{payment}/history', [PaymentController::class, 'history'])->name('payments.history');
+    Route::get('/payments/{payment}/audit-pdf', [PaymentController::class, 'auditPdf'])->name('payments.auditPdf');
+    Route::get('/payments/{payment}/audit/pdf', [PaymentController::class, 'printAudit'])->name('payments.audit.pdf');
+
+
+    // Project Payment Summary PDF
+    Route::get('/projects/{project}/payment-summary/pdf',
+        [PaymentController::class, 'printSummary'])->name('payments.summary.pdf');
+
+
+
+    /* =======================
+       CASH ADVANCE
+    ======================= */
     Route::get('/cashadvance', [CashAdvanceController::class, 'index'])->name('cashadvance.index');
     Route::post('/cashadvance/{advance}/approve', [CashAdvanceController::class, 'approve'])->name('cashadvance.approve');
     Route::post('/cashadvance/{advance}/reject', [CashAdvanceController::class, 'reject'])->name('cashadvance.reject');
 
-    // Payroll
-    Route::resource('payroll', PayrollController::class)->only(['index', 'create']);
+
+    /* =======================
+       EXPENSES
+    ======================= */
+    Route::resource('expenses', ExpenseController::class)->only(['index', 'show', 'edit', 'update', 'destroy']);
+    Route::post('/expenses/{expense}/approve', [ExpenseController::class, 'approve'])->name('expenses.approve');
+    Route::post('/expenses/{expense}/reject', [ExpenseController::class, 'reject'])->name('expenses.reject');
+    Route::post('/expenses/{expense}/cancel', [ExpenseController::class, 'cancel'])->name('expenses.cancel');
+    Route::post('/expenses/{expense}/reissue', [ExpenseController::class, 'reissue'])->name('expenses.reissue');
+
+
+
+
+
+    /* =======================
+       PAYROLL
+    ======================= */
+    Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+    Route::get('/payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
+
+    // ⭐ THIS IS THE MISSING ROUTE
+    Route::post('/payroll/preview', [PayrollController::class, 'preview'])->name('payroll.preview');
+
+    // Generate payroll and save to DB
+    Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
+
+    // Show payroll run details
+    Route::get('/payroll/{run}', [PayrollController::class, 'show'])->name('payroll.show');
+
+    // Finalize payroll
+    Route::post('/payroll/{run}/finalize', [PayrollController::class, 'finalize'])->name('payroll.finalize');
+
+
+
+
+
+
+
 });
 
+
+Route::middleware(['auth', 'role:accounting'])->group(function () {
+
+    // ACCOUNTING DASHBOARD ROUTE
+    Route::get('/accounting/dashboard', [DashboardController::class, 'accountingDashboard'])
+        ->name('accounting.dashboard');
+
+});
 
 /*
 |--------------------------------------------------------------------------

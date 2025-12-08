@@ -12,8 +12,9 @@ class ClientController extends Controller
      */
     public function index()
     {
-        //
-        $clients = Client::orderBy('name')->get();
+        // ALWAYS READ FROM LOCAL MYSQL DB
+        $clients = \App\Models\Client::orderBy('id', 'desc')->get();
+
         return view('clients.index', compact('clients'));
     }
 
@@ -32,22 +33,17 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255',
+        $client = Client::create([
+            'name'          => $request->name,
+            'contact_person'=> $request->contact_person,
+            'email'         => $request->email,
+            'phone'         => $request->phone,
+            'address'       => $request->address,
+            'sync_status'   => 'pending', // 👈 IMPORTANT!
         ]);
 
-        // Always pending until synced to CleverCloud
-        $validated['sync_status'] = 'pending';
-
-        $client = Client::create($validated);
-
-        return redirect()
-            ->route('clients.show', $client->id)
-            ->with('success','Client saved locally — syncing soon.');
+        return redirect()->route('clients.index')
+            ->with('success', 'Client saved locally — pending sync.');
     }
 
 

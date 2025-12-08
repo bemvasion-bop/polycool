@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Payment;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -70,39 +71,64 @@ class PaymentController extends Controller
     /* ============================================================
      * APPROVE PAYMENT (Owner + Accounting)
      * ============================================================ */
-    public function approve($id)
+    public function approve(Payment $payment)
     {
-        $payment = Payment::findOrFail($id);
-
         $payment->update([
-            'status'       => 'approved',
-            'approved_by'  => auth()->id(),
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
         ]);
 
-        return back()->with('success', 'Payment approved.');
+        return back()->with('success', 'Payment approved successfully!');
     }
 
 
+    public function reject(Payment $payment)
+    {
+        $payment->status = 'rejected';
+        $payment->approved_by = null; // just to be safe
+        $payment->cancel_reason = request('cancel_reason'); // optional
+        $payment->save();
+
+        return redirect()->back()->with('success', 'Payment rejected.');
+    }
 
     /* ============================================================
      * CANCEL PAYMENT (Reversal)
      * ============================================================ */
-    public function cancel(Request $request, $id)
+    public function cancel(Payment $payment)
     {
-        $payment = Payment::findOrFail($id);
+        // Allowed roles only
+        if (!in_array(auth()->user()->system_role, ['owner','accounting'])) {
+            abort(403, 'Unauthorized action');
+        }
 
-        $request->validate([
-            'correction_reason' => 'required|string',
+        // Only cancel approved payments
+        if ($payment->status !== 'approved') {
+            return back()->with('error', 'Only approved payments can be cancelled.');
+        }
+
+        // Mark as reversed
+        $payment->status = 'reversed';
+        $payment->notes = 'Cancelled & marked for re-issue';
+        $payment->approved_by = auth()->id();
+        $payment->save();
+
+        // Create a replacement payment (empty)
+        $newPayment = Payment::create([
+            'project_id' => $payment->project_id,
+            'amount' => 0,
+            'status' => 'pending',
+            'payment_method' => $payment->payment_method,
+            'notes' => 'Re-issue payment',
+            'payment_date' => now(),
+            'added_by' => auth()->id()
         ]);
 
-        // Reverse
-        $payment->update([
-            'status'            => 'cancelled',
-            'correction_reason' => $request->correction_reason,
-        ]);
-
-        return back()->with('success', 'Payment cancelled.');
+        return redirect()
+            ->route('payments.show', $payment->id)
+            ->with('success', 'Payment cancelled. Please re-issue corrected amount.');
     }
+
 
 
 
@@ -121,35 +147,105 @@ class PaymentController extends Controller
     /* ============================================================
      * REISSUE PAYMENT (Corrected Amount)
      * ============================================================ */
-    public function reissue(Request $request, $id)
+    public function reissue(Request $request, Payment $payment)
+    {
+        if (auth()->user()->system_role !== 'manager') {
+            abort(403, 'Unauthorized action');
+        }
+
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        // Preserve original amount only once
+        if (!$payment->original_amount) {
+            $payment->original_amount = $payment->amount;
+        }
+
+        $payment->amount = $request->amount;
+        $payment->notes = $request->notes ?: 'Corrected re-issue payment';
+        $payment->status = 'pending';
+        $payment->payment_date = now();
+        $payment->corrected_by = auth()->id();
+        $payment->corrected_at = now();
+        $payment->save();
+
+        return redirect()
+            ->route('projects.show', $payment->project_id)
+            ->with('success', 'Payment re-issued successfully.');
+    }
+
+
+    public function update(Request $request, Payment $payment)
     {
         $request->validate([
             'amount' => 'required|numeric|min:1',
-            'correction_reason' => 'required|string',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string'
         ]);
 
-        $old = Payment::findOrFail($id);
+        $payment->amount = $request->amount;
+        $payment->payment_date = $request->payment_date;
+        $payment->notes = $request->notes ?? null;
 
-        // Create corrected payment
-        $new = Payment::create([
-            'project_id'      => $old->project_id,
-            'amount'          => $request->amount,
-            'payment_method'  => $old->payment_method,
-            'payment_date'    => now(),
-            'notes'           => "Reissued payment",
-            'status'          => 'approved',
-            'submitted_by'    => auth()->id(),
-            'approved_by'     => auth()->id(),
-            'reversal_of'     => $old->id,
-            'correction_reason' => $request->correction_reason,
-        ]);
+        $payment->save();
 
-        // Mark old as cancelled
-        $old->update([
-            'status' => 'cancelled'
-        ]);
-
-        return redirect()->route('payments.index')
-            ->with('success', 'Payment reissued successfully.');
+        return redirect()->back()->with('success', 'Payment updated successfully!');
     }
+
+
+    public function history(Payment $payment)
+    {
+        $original = Payment::find($payment->reversal_of);
+
+        return response()->json([
+            'original_amount' => $original ? $original->amount : '—',
+            'cancelled_by' => $original ? optional($original->canceller)->name : '—',
+            'cancel_reason' => $original ? ($original->cancel_reason ?? '—') : '—',
+            'new_amount' => $payment->amount, // corrected payment
+            'correction_reason' => $payment->notes,
+            'updated_at' => $payment->updated_at->format('M d, Y h:i A'),
+        ]);
+    }
+
+
+    public function printSummary(Project $project)
+    {
+        $payments = Payment::where('project_id', $project->id)->get();
+
+        $baseContract = $project->total_price;
+        $extraTotal   = $project->extraWorks()->sum('amount');
+        $totalProject = $baseContract + $extraTotal;
+
+        $totalPaid    = $payments->sum('amount');
+        $remaining    = $totalProject - $totalPaid;
+
+        $pdf = Pdf::loadView('pdf.payment-summary', [
+            'project'      => $project,
+            'payments'     => $payments,
+            'baseContract' => $baseContract,
+            'extraTotal'   => $extraTotal,
+            'totalProject' => $totalProject,
+            'totalPaid'    => $totalPaid,
+            'remaining'    => $remaining,
+        ])->setPaper('A4', 'portrait');
+
+        return $pdf->download("Payment-Summary-{$project->project_name}.pdf");
+    }
+
+    public function printAudit(Payment $payment)
+    {
+        $original = Payment::find($payment->reversal_of);
+        $replaced = $payment; // This is already the new corrected record
+
+        $pdf = Pdf::loadView('pdf.reversal-audit', [
+            'payment'   => $payment,
+            'original'  => $original,
+            'replaced'  => $replaced,
+        ])->setPaper('A4', 'portrait');
+
+        return $pdf->download("Reversal-Audit-{$payment->id}.pdf");
+    }
+
 }

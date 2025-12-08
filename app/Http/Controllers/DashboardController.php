@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceLog;
 use App\Models\PayrollRun;
 use App\Models\Project;
+use App\Models\Payment;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -170,12 +171,22 @@ class DashboardController extends Controller
             ->groupBy('category')
             ->pluck('total', 'category');
 
+        $pendingExpenseList = \App\Models\Expense::where('status', 'pending')
+            ->with(['submittedBy'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         // Chart: Payments Summary
         $paymentSummary = [
             'pending'  => \App\Models\Payment::where('status', 'pending')->count(),
             'approved' => \App\Models\Payment::where('status', 'approved')->count(),
             'rejected' => \App\Models\Payment::where('status', 'rejected')->count(),
         ];
+
+        $pendingPaymentList = \App\Models\Payment::where('status', 'pending')
+            ->with(['project.client', 'submittedBy'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return view('dashboard.accounting', compact(
             'pendingPayments',
@@ -185,7 +196,10 @@ class DashboardController extends Controller
             'profit',
             'expenseTrend',
             'expenseBreakdown',
-            'paymentSummary'
+            'paymentSummary',
+            'pendingPaymentList',
+            'pendingExpenseList' , //
+    // 'reversalCount' optional, as discussed
         ));
     }
 
@@ -194,43 +208,58 @@ class DashboardController extends Controller
      * ============================================================ */
     public function auditDashboard()
     {
-        return view('dashboard.audit', [
-            'recentLogs'    => AttendanceLog::orderBy('created_at', 'desc')->limit(20)->get(),
-            'totalPayments' => 0,
-            'totalExpenses' => 0,
-        ]);
+         return view('dashboard.audit', [
+        'recentLogs' => \App\Models\AuditLog::with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get(),
+
+        'paymentStats' => [
+            'approved' => \App\Models\Payment::where('status', 'approved')->count(),
+            'pending'  => \App\Models\Payment::where('status', 'pending')->count(),
+            'rejected' => \App\Models\Payment::where('status', 'rejected')->count(),
+        ],
+
+        'expenseStats' => [
+            'approved' => \App\Models\Expense::where('status', 'approved')->count(),
+            'pending'  => \App\Models\Expense::where('status', 'pending')->count(),
+            'rejected' => \App\Models\Expense::where('status', 'rejected')->count(),
+        ],
+    ]);
     }
 
     public function syncAll()
-{
-    $pendingClients = \App\Models\Client::where('sync_status', 'pending')->get();
-    $syncedCount = 0;
+    {
+        $pendingClients = \App\Models\Client::where('sync_status', 'pending')->get();
+        $syncedCount = 0;
 
-    foreach ($pendingClients as $client) {
-        try {
-            \DB::connection('cloud')->table('clients')->updateOrInsert(
-    ['email' => $client->email],
-            [
-                'name' => $client->name,
-                'contact_person' => $client->contact_person,
-                'phone' => $client->phone,
-                'address' => $client->address,
-                'created_at' => $client->created_at,
-                'updated_at' => now(),
-            ]
-        );
+        foreach ($pendingClients as $client) {
+            try {
+                \DB::connection('cloud')->table('clients')->updateOrInsert(
+        ['email' => $client->email],
+                [
+                    'name' => $client->name,
+                    'contact_person' => $client->contact_person,
+                    'phone' => $client->phone,
+                    'address' => $client->address,
+                    'created_at' => $client->created_at,
+                    'updated_at' => now(),
+                ]
+            );
 
-            $client->sync_status = 'synced';
-            $client->save();
-            $syncedCount++;
-        } catch (\Exception $e) {
-            \Log::error("Client Sync Fail: " . $e->getMessage());
-        }
+                $client->sync_status = 'synced';
+                $client->save();
+                $syncedCount++;
+            } catch (\Exception $e) {
+                \Log::error("Client Sync Fail: " . $e->getMessage());
+            }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Synced {$syncedCount} clients to cloud!"
+            ]);
+
     }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => "Synced {$syncedCount} clients to cloud!"
-        ]);}
 
 }

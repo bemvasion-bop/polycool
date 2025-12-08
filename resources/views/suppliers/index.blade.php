@@ -130,7 +130,7 @@
                         Edit
                     </a>
 
-                    {{-- DELETE --}}
+                    {{-- DELETE
                     <form action="{{ route('suppliers.destroy', $supplier) }}"
                           method="POST"
                           onsubmit="return confirm('Delete this supplier?')">
@@ -139,6 +139,7 @@
                             Delete
                         </button>
                     </form>
+                    --}}
 
                 </td>
 
