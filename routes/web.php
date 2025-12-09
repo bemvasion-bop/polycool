@@ -24,20 +24,6 @@ use App\Http\Controllers\{
 };
 
 
-Route::get('/fix-deploy', function () {
-    try {
-        Artisan::call('key:generate', ['--show' => true]);
-        Artisan::call('migrate', ['--force' => true]);
-        // Uncomment if you need seeders
-        // Artisan::call('db:seed', ['--force' => true]);
-
-        return "✔ Deployment fix ran successfully!<br>" .
-               "APP_KEY: " . Artisan::output();
-    } catch (\Exception $e) {
-        return "❌ Error: " . $e->getMessage();
-    }
-});
-
 
 
 /*
