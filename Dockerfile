@@ -42,6 +42,17 @@ COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/superviso
 # Debug check
 RUN ls -R /etc/supervisor/conf.d
 
+
+# ==========================================
+# FIX LARAVEL CACHES AFTER DEPLOY
+# ==========================================
+RUN php artisan config:clear \
+    && php artisan cache:clear \
+    && php artisan route:clear \
+    && php artisan view:clear
+
+
+
 # ==========================================
 # 6️⃣ START SERVICES
 # ==========================================
