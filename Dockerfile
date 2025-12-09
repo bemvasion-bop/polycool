@@ -19,15 +19,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # ==========================================
 WORKDIR /var/www/html
 COPY . .
-
 RUN composer install --no-dev --optimize-autoloader
 
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
-
-# Fix PHP-FPM running as root problem
-RUN sed -i "s/user = .*/user = www-data/" /usr/local/etc/php-fpm.d/www.conf \
-    && sed -i "s/group = .*/group = www-data/" /usr/local/etc/php-fpm.d/www.conf
+RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chmod -R 775 storage bootstrap/cache
 
 # ==========================================
 # 4️⃣ NGINX CONFIG
@@ -38,22 +33,13 @@ COPY ./nginx.conf /etc/nginx/nginx.conf
 # 5️⃣ SUPERVISOR CONFIG
 # ==========================================
 COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Debug check
 RUN ls -R /etc/supervisor/conf.d
 
-
 # ==========================================
-# FIX LARAVEL CACHES AFTER DEPLOY
+# 6️⃣ START SERVICES + Clear Cache on Boot
 # ==========================================
-RUN php artisan config:clear \
-    && php artisan cache:clear \
-    && php artisan route:clear \
-    && php artisan view:clear
-
-
-
-# ==========================================
-# 6️⃣ START SERVICES
-# ==========================================
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan route:clear && \
+    php artisan view:clear && \
+    /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
