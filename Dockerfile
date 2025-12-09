@@ -1,5 +1,5 @@
 # ==========================================
-# 1️⃣ BASE IMAGE: PHP 8.2 with FPM
+# 1️⃣ BASE IMAGE
 # ==========================================
 FROM php:8.2-fpm
 
@@ -19,29 +19,46 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # ==========================================
 WORKDIR /var/www/html
 
-# Copy Laravel app files
+# Copy all app files
 COPY . .
 
-# Install PHP dependencies (Production Mode)
+# Install optimized dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Folder Permissions
-RUN chown -R www-data:www-data storage bootstrap/cache
+# ==========================================
+# 4️⃣ FIX PHP-FPM RUNNING AS ROOT 🚑
+# ==========================================
+RUN sed -i "s/user = .*/user = www-data/" /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i "s/group = .*/group = www-data/" /usr/local/etc/php-fpm.d/www.conf
 
 # ==========================================
-# 4️⃣ NGINX CONFIG
+# 5️⃣ PERMISSIONS (VERY IMPORTANT)
+# ==========================================
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# ==========================================
+# 6️⃣ NGINX CONFIG
 # ==========================================
 COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # ==========================================
-# 5️⃣ SUPERVISOR CONFIG (IMPORTANT FIX)
+# 7️⃣ SUPERVISOR CONFIG
 # ==========================================
 COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Debug: Check file is present (shows in logs)
+# Debug: show config presence
 RUN ls -R /etc/supervisor/conf.d
 
 # ==========================================
-# 6️⃣ START SERVICES (Nginx + PHP-FPM)
+# 8️⃣ LARAVEL CACHE CLEAR (avoids 500 errors)
+# ==========================================
+RUN php artisan config:clear \
+    && php artisan cache:clear \
+    && php artisan route:clear \
+    && php artisan view:clear
+
+# ==========================================
+# 9️⃣ START SERVICES
 # ==========================================
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
