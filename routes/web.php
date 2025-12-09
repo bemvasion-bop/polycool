@@ -25,6 +25,24 @@ use App\Http\Controllers\{
 
 
 
+Route::get('/fix-deploy', function () {
+    try {
+        // Generate APP_KEY if not set
+        Artisan::call('key:generate', ['--show' => true]);
+
+        // Run migrations to create all tables
+        Artisan::call('migrate', ['--force' => true]);
+
+        // If you need default data from seeders, uncomment:
+        // Artisan::call('db:seed', ['--force' => true]);
+
+        return nl2br("✔ Deployment Fix SUCCESS!\n\nAPP_KEY: " . Artisan::output());
+    } catch (\Exception $e) {
+        return "❌ ERROR: " . $e->getMessage();
+    }
+});
+
+
 
 /*
 |--------------------------------------------------------------------------
