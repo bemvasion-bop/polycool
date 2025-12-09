@@ -380,3 +380,8 @@ Route::middleware(['auth', 'role:audit'])->group(function () {
 */
 Route::post('/attendance/scan', [AttendanceController::class, 'scan'])
     ->name('attendance.scan');
+
+
+Route::get('/debug-log', function () {
+    return response()->file(storage_path('logs/laravel.log'));
+});
