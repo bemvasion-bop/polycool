@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Artisan;
+
 
 use App\Http\Controllers\{
     AttendanceController,
@@ -20,6 +22,23 @@ use App\Http\Controllers\{
     SyncAllController,
     WeatherController
 };
+
+
+Route::get('/fix-deploy', function () {
+    try {
+        Artisan::call('key:generate', ['--show' => true]);
+        Artisan::call('migrate', ['--force' => true]);
+        // Uncomment if you need seeders
+        // Artisan::call('db:seed', ['--force' => true]);
+
+        return "✔ Deployment fix ran successfully!<br>" .
+               "APP_KEY: " . Artisan::output();
+    } catch (\Exception $e) {
+        return "❌ Error: " . $e->getMessage();
+    }
+});
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -85,8 +104,8 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
         ->name('quotations.approve');
     Route::post('/quotations/{quotation}/decline', [QuotationController::class, 'decline'])
         ->name('quotations.decline');
-    Route::post('/quotations/{quotation}/convert-to-project', [QuotationController::class, 'convertToProject'])
-        ->name('quotations.convert-to-project');
+    Route::post('/quotations/{quotation}/convert', [QuotationController::class, 'convertToProject'])
+        ->name('quotations.convert');
 
 
     // Attendance overrides

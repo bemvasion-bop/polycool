@@ -1,159 +1,229 @@
 @extends('layouts.app')
 
+@section('title', 'Expenses')
+
+@section('page-header')
+<div class="flex justify-between items-center">
+    <h1 class="text-3xl font-semibold text-gray-900 tracking-tight">Expenses</h1>
+</div>
+@endsection
+
 @section('content')
-<div class="max-w-6xl mx-auto">
 
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold">Expenses</h1>
-    </div>
+<style>
+    /* Glass Container */
+    .glass-wrapper {
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(26px);
+        -webkit-backdrop-filter: blur(26px);
+        border-radius: 26px;
+        border: 1px solid rgba(255,255,255,0.45);
+        padding: 24px 32px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+    }
 
-    {{-- Flash messages --}}
+    /* Table Header */
+    table thead th {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: .04rem;
+        color: rgba(0,0,0,0.6);
+        text-transform: uppercase;
+        padding-bottom: 12px;
+        white-space: nowrap;
+    }
+
+    /* Table Body */
+    table tbody td {
+        padding: 16px 12px;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    tr:hover td {
+        background: rgba(255,255,255,0.6);
+    }
+
+    /* Status Pills */
+    .pill {
+        padding: 4px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .pill-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .pill-approved {
+        background: #c6f6d5;
+        color: #087F37;
+    }
+    .pill-cancelled {
+        background: #f8d7da;
+        color: #842029;
+    }
+    .pill-reissued {
+        background: #e9d5ff;
+        color: #5b21b6;
+    }
+
+    /* Actions */
+    .action-link {
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .link-green { color:#0e7730; }
+    .link-red { color:#d21d2a; }
+    .link-purple { color:#5c27b7; }
+    .action-link:hover { text-decoration: underline; }
+</style>
+
+<div class="max-w-7xl mx-auto space-y-8">
+
+    {{-- Flash Messages --}}
     @if(session('success'))
-        <div class="mb-4 px-4 py-2 bg-green-100 text-green-800 rounded">
+        <div class="px-4 py-2 bg-green-100 text-green-800 rounded">
             {{ session('success') }}
         </div>
     @endif
-
     @if(session('info'))
-        <div class="mb-4 px-4 py-2 bg-blue-100 text-blue-800 rounded">
+        <div class="px-4 py-2 bg-blue-100 text-blue-800 rounded">
             {{ session('info') }}
         </div>
     @endif
 
-    <div class="bg-white shadow-sm rounded-lg overflow-hidden">
-        <table class="w-full text-left border-collapse">
+    {{-- Table --}}
+    <div class="glass-wrapper overflow-x-auto">
+
+        <table class="w-full">
             <thead>
-                <tr class="bg-gray-100 text-sm text-gray-600">
-                    <th class="px-4 py-2">Project</th>
-                    <th class="px-4 py-2">Category</th>
-                    <th class="px-4 py-2 text-right">Amount</th>
-                    <th class="px-4 py-2">Date</th>
-                    <th class="px-4 py-2">Added By</th>
-                    <th class="px-4 py-2 text-center">Status</th>
-                    <th class="px-4 py-2 text-center">Actions</th>
+                <tr class="text-sm border-b border-gray-200">
+                    <th class="text-left">Project</th>
+                    <th class="text-left">Category</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-left">Date</th>
+                    <th class="text-left">Added By</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody class="text-sm">
-    @forelse($expenses as $expense)
-        <tr class="border-t hover:bg-gray-50">
 
-            {{-- Project --}}
-            <td class="px-4 py-2">
-                {{ $expense->project->project_name ?? '—' }}
-            </td>
+            <tbody>
+                @forelse($expenses as $expense)
+                <tr class="transition">
 
-            {{-- Category --}}
-            <td class="px-4 py-2">
-                @if($expense->material_id)
-                    {{ $expense->material->name }}
-                @else
-                    {{ $expense->category ?: 'Custom' }}
-                @endif
-            </td>
+                    {{-- Project --}}
+                    <td>{{ $expense->project->project_name ?? '—' }}</td>
 
-            {{-- Amount --}}
-            <td class="px-4 py-2 text-right">
-                ₱{{ number_format($expense->material_id ? $expense->total_cost : $expense->amount, 2) }}
-            </td>
+                    {{-- Category --}}
+                    <td>
+                        @if($expense->material_id)
+                            {{ $expense->material->name }}
+                        @else
+                            {{ $expense->category ?: 'Custom' }}
+                        @endif
+                    </td>
 
-            {{-- Date --}}
-            <td class="px-4 py-2">
-                {{ \Carbon\Carbon::parse($expense->expense_date)->format('M d, Y') }}
-            </td>
+                    {{-- Amount --}}
+                    <td class="text-right">
+                        ₱{{ number_format($expense->material_id ? $expense->total_cost : $expense->amount, 2) }}
+                    </td>
 
-            {{-- Added By --}}
-            <td class="px-4 py-2">
-                @if($expense->corrected_by)
-                    {{-- Show corrected_by user --}}
-                    {{ optional($expense->correctedBy)->name ?? '—' }}
-                @else
-                    {{-- Show creator user --}}
-                        {{ $expense->user->given_name ?? 'System' }}
-                @endif
-            </td>
+                    {{-- Date --}}
+                    <td>{{ \Carbon\Carbon::parse($expense->expense_date)->format('M d, Y') }}</td>
 
-            {{-- Status Badge --}}
-            <td class="px-4 py-2 text-center">
-                @if($expense->status === 'pending')
-                    <span class="px-3 py-1 bg-yellow-400 text-black rounded text-xs">Pending</span>
-                @elseif($expense->status === 'approved')
-                    <span class="px-3 py-1 bg-green-500 text-white rounded text-xs">Approved</span>
-                @elseif($expense->status === 'cancelled')
-                    <span class="px-3 py-1 bg-red-600 text-white rounded text-xs">Cancelled</span>
-                @elseif($expense->status === 'reissued')
-                    <span class="px-3 py-1 bg-purple-600 text-white rounded text-xs">Reissued</span>
-                @endif
-            </td>
+                    {{-- Added By --}}
+                    <td>
+                        @if($expense->corrected_by)
+                            {{ optional($expense->correctedBy)->name ?? '—' }}
+                        @else
+                            {{ $expense->user->given_name ?? 'System' }}
+                        @endif
+                    </td>
 
-            {{-- ACTIONS --}}
-            <td class="px-4 py-2 text-center">
+                    {{-- Status --}}
+                    <td class="text-center">
+                        @if($expense->status === 'pending')
+                            <span class="pill pill-pending">Pending</span>
+                        @elseif($expense->status === 'approved')
+                            <span class="pill pill-approved">Approved</span>
+                        @elseif($expense->status === 'cancelled')
+                            <span class="pill pill-cancelled">Cancelled</span>
+                        @elseif($expense->status === 'reissued')
+                            <span class="pill pill-reissued">Reissued</span>
+                        @endif
+                    </td>
 
-                {{-- Auto-imported: disable --}}
-                @if(str_contains(strtolower($expense->details ?? ''), 'auto-import'))
-                    <span class="text-gray-400">—</span>
+                    {{-- ACTIONS --}}
+                    <td class="text-right space-x-3">
 
-                {{-- Pending → Owner can Approve / Reject --}}
-                @elseif($expense->status === 'pending'
-                    && auth()->user()->system_role === 'owner')
+                        @if(str_contains(strtolower($expense->details ?? ''), 'auto-import'))
+                            <span class="text-gray-400">—</span>
 
-                    <form action="{{ route('expenses.approve', $expense->id) }}" method="POST" class="inline">
-                        @csrf
-                        <button class="text-green-600 hover:underline text-sm">Approve</button>
-                    </form>
+                        {{-- Pending: Owner only --}}
+                        @elseif($expense->status === 'pending'
+                            && auth()->user()->system_role === 'owner')
 
-                    <form action="{{ route('expenses.reject', $expense->id) }}" method="POST" class="inline">
-                        @csrf
-                        <button class="text-red-600 hover:underline text-sm ml-2">Reject</button>
-                    </form>
+                            <form action="{{ route('expenses.approve', $expense->id) }}" method="POST" class="inline">
+                                @csrf
+                                <button class="action-link link-green">Approve</button>
+                            </form>
 
-                {{-- Approved → Owner Cancel & Re-Issue --}}
-                @elseif($expense->status === 'approved'
-                    && auth()->user()->system_role === 'owner')
+                            <form action="{{ route('expenses.reject', $expense->id) }}" method="POST" class="inline">
+                                @csrf
+                                <button class="action-link link-red">Reject</button>
+                            </form>
 
-                    <form action="{{ route('expenses.cancel', $expense->id) }}" method="POST" class="inline">
-                        @csrf
-                        <button type="submit" onclick="return confirm('Cancel & re-issue this expense?')"
-                            class="text-red-600 hover:underline text-sm">
-                            Cancel & Re-Issue
-                        </button>
-                    </form>
+                        {{-- Approved: Owner --}}
+                        @elseif($expense->status === 'approved'
+                            && auth()->user()->system_role === 'owner')
 
-                {{-- Reversed → Manager encodes corrected amount --}}
-                @elseif($expense->status === 'reissued'
-                    && auth()->user()->system_role === 'manager')
+                            <form action="{{ route('expenses.cancel', $expense->id) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit" onclick="return confirm('Cancel & re-issue this expense?')"
+                                        class="action-link link-red">
+                                    Cancel & Re-Issue
+                                </button>
+                            </form>
 
-                    <button onclick="showExpenseReIssueModal({{ $expense->id }})"
-                        class="text-purple-600 hover:underline text-sm">
-                        Re-Issue Expense
-                    </button>
-                @endif
+                        {{-- Reissued: Manager --}}
+                        @elseif($expense->status === 'reissued'
+                            && auth()->user()->system_role === 'manager')
 
+                            <button onclick="showExpenseReIssueModal({{ $expense->id }})"
+                                class="action-link link-purple">
+                                Re-Issue Expense
+                            </button>
 
+                        @endif
 
-                    <script>
-                    function showExpenseReIssueModal(id) {
-                        const form = document.getElementById('expenseReIssueForm');
-                        form.action = `/expenses/${id}/reissue`; // dynamic
-                        document.getElementById('expenseReIssueModal').classList.remove('hidden');
-                    }
+                    </td>
 
-                    function hideExpenseReIssueModal() {
-                        document.getElementById('expenseReIssueModal').classList.add('hidden');
-                    }
-                    </script>
-
-            </td>
-        </tr>
-    @empty
-        <tr>
-            <td colspan="7" class="px-4 py-6 text-center text-gray-500">
-                No expenses recorded yet.
-            </td>
-        </tr>
-    @endforelse
-</tbody>
-
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="py-6 text-center text-gray-500">
+                        No expenses recorded yet.
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
         </table>
+
     </div>
+
 </div>
+
+{{-- MODAL SCRIPT (unchanged) --}}
+<script>
+function showExpenseReIssueModal(id) {
+    document.getElementById('expenseReIssueForm').action = `/expenses/${id}/reissue`;
+    document.getElementById('expenseReIssueModal').classList.remove('hidden');
+}
+function hideExpenseReIssueModal() {
+    document.getElementById('expenseReIssueModal').classList.add('hidden');
+}
+</script>
+
 @endsection

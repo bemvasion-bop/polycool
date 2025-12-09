@@ -1,84 +1,133 @@
 @extends('layouts.app')
 
+@section('page-header')
+<h2 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    Attendance Management
+</h2>
+@endsection
+
 @section('content')
-<div class="px-8 py-6">
 
-    <h2 class="text-2xl font-semibold mb-6">Attendance Management</h2>
+<style>
+    /* 🌈 Polysync Glass Card */
+    .glass-card {
+        border-radius: 26px;
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(22px) saturate(180%);
+        -webkit-backdrop-filter: blur(22px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.50);
+        box-shadow: 0 18px 55px rgba(0,0,0,0.08);
+        padding: 28px 32px;
+        transition: .25s ease;
+    }
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    /* 🔎 Search Bars */
+    .search-input {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.12);
+        background: rgba(255,255,255,0.75);
+        font-size: 14px;
+        transition: .25s ease;
+    }
+    .search-input:focus {
+        border-color: #6366f1;
+        outline: none;
+        box-shadow: 0 0 0 3px #A5B4FC60;
+    }
 
-        {{-- EMPLOYEE LIST --}}
-        <div class="bg-white shadow rounded p-6">
-            <h3 class="font-semibold text-lg mb-4">Employees</h3>
+    /* List styling */
+    .att-item {
+        padding: 12px;
+        border-radius: 16px;
+        font-size: 14px;
+        transition: .25s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid transparent;
+    }
+    .att-item:hover {
+        background: rgba(255,255,255,0.85);
+        border-color: rgba(0,0,0,0.12);
+    }
 
-            <input type="text" id="empSearch" placeholder="Search employee..."
-                   class="w-full mb-3 p-2 border rounded">
-
-            <ul id="employeeList" class="space-y-2">
-                @foreach($employees as $emp)
-                    <li class="p-2 border rounded hover:bg-gray-100">
-                        <a href="{{ route('attendance.employee', $emp->id) }}">
-                            {{ $emp->full_name }}
-                            <span class="text-gray-500 text-sm">({{ $emp->role }})</span>
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
-
-        {{-- PROJECT LIST --}}
-        <div class="bg-white shadow rounded p-6">
-            <h3 class="font-semibold text-lg mb-4">Projects</h3>
-
-            <input type="text" id="projSearch" placeholder="Search project..."
-                   class="w-full mb-3 p-2 border rounded">
-
-            <ul id="projectList" class="space-y-2">
-                @foreach($projects as $proj)
-                    <li class="p-2 border rounded hover:bg-gray-100">
-                        <a href="{{ route('attendance.project', $proj->id) }}">
-                            {{ $proj->project_name }}
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
-
-        {{-- 
-        <form action="{{ route('attendance.markAbsentsToday') }}" method="POST" class="mb-4">
-          @csrf
-            <a href="{{ route('attendance.scanner') }}"
-                class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-                Open QR Scanner
-            </a>
-        </form>
-         --}}
+    .role-text {
+        font-size: 12px;
+        color: #6b7280;
+    }
+</style>
 
 
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+    {{-- EMPLOYEE LIST --}}
+    <div class="glass-card">
+        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <i data-lucide="users" class="w-5 h-5"></i> Employees
+        </h3>
+
+        <input type="text"
+               id="empSearch"
+               class="search-input mb-4"
+               placeholder="Search employee…">
+
+        <ul id="employeeList" class="space-y-2">
+            @foreach($employees as $emp)
+                <li class="att-item">
+                    <i data-lucide="user-round" class="w-4 h-4 text-gray-700"></i>
+                    <a href="{{ route('attendance.employee', $emp->id) }}" class="flex-1">
+                        {{ $emp->full_name }}
+                        <span class="role-text">({{ ucfirst($emp->system_role) }})</span>
+                    </a>
+                </li>
+            @endforeach
+        </ul>
     </div>
+
+    {{-- PROJECT LIST --}}
+    <div class="glass-card">
+        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <i data-lucide="folder-kanban" class="w-5 h-5"></i> Projects
+        </h3>
+
+        <input type="text"
+               id="projSearch"
+               class="search-input mb-4"
+               placeholder="Search project…">
+
+        <ul id="projectList" class="space-y-2">
+            @foreach($projects as $proj)
+                <li class="att-item">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-gray-700"></i>
+                    <a href="{{ route('attendance.project', $proj->id) }}" class="flex-1">
+                        {{ $proj->project_name }}
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </div>
+
 </div>
 
-{{-- Simple search filtering --}}
+
+{{-- Search Filtering --}}
 <script>
-    const empSearch = document.getElementById("empSearch");
-    const empList = document.getElementById("employeeList").getElementsByTagName("li");
+    function setupSearch(inputId, listId) {
+        const input = document.getElementById(inputId);
+        const listItems = document.getElementById(listId).getElementsByTagName("li");
 
-    empSearch.addEventListener("input", function() {
-        let filter = empSearch.value.toLowerCase();
-        for (let li of empList) {
-            li.style.display = li.textContent.toLowerCase().includes(filter) ? "" : "none";
-        }
-    });
+        input.addEventListener("input", () => {
+            const filter = input.value.toLowerCase();
+            for (let li of listItems) {
+                li.style.display = li.textContent.toLowerCase().includes(filter) ? "" : "none";
+            }
+        });
+    }
 
-    const projSearch = document.getElementById("projSearch");
-    const projList = document.getElementById("projectList").getElementsByTagName("li");
-
-    projSearch.addEventListener("input", function() {
-        let filter = projSearch.value.toLowerCase();
-        for (let li of projList) {
-            li.style.display = li.textContent.toLowerCase().includes(filter) ? "" : "none";
-        }
-    });
+    setupSearch("empSearch", "employeeList");
+    setupSearch("projSearch", "projectList");
 </script>
 
 @endsection

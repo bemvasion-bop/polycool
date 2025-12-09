@@ -48,7 +48,10 @@ class ProjectController extends Controller
 
 
         // Weather
-        $weatherData = $weatherService->getForecast($project->location);
+        $weatherData = null;
+            if (!empty($project->location)) {
+                $weatherData = $weatherService->getForecast($project->location);
+            }
         $project->progress = $project->calculateProgress();
 
         // Financials
@@ -192,11 +195,18 @@ class ProjectController extends Controller
         foreach ($employees as $empId) {
             $emp = User::find($empId);
 
-            // ❌ Office staff cannot be assigned to a project
+            // ❌ Office staff
             if ($emp && $emp->employment_type === 'office_staff') {
-                return back()->withErrors([
-                    'employees' => $emp->full_name . ' is office staff and cannot be assigned to field projects.'
-                ]);
+                $error = $emp->full_name . ' is office staff and cannot be assigned.';
+                return back()->with('error', $error);
+            }
+
+            // ❌ Already active in another project
+            if (Project::employeeHasActiveProject($empId) &&
+                !$project->users()->where('user_id', $empId)->exists()
+            ) {
+                $error = $emp->full_name . ' is still assigned to another ongoing project.';
+                return back()->with('error', $error);
             }
 
             $syncData[$empId] = [
@@ -205,18 +215,23 @@ class ProjectController extends Controller
             ];
         }
 
-        if ($project->isDirty('location')) {
-            Cache::forget("weather_{$project->latitude}_{$project->longitude}");
-        }
 
         $project->users()->sync($syncData);
+
+
 
         // ----------------------------------------
         // 4. DONE
         // ----------------------------------------
-        return redirect()
-            ->route('projects.show', $project->id)
-            ->with('success', 'Project updated successfully.');
+        if (!empty($employees)) {
+             return redirect()
+                ->route('projects.show', $project->id)
+                ->with('success', 'Assigned workforce updated successfully!');
+        } else {
+            return redirect()
+                ->route('projects.show', $project->id)
+                ->with('success', 'Project updated successfully.');
+        }
     }
 
     /**

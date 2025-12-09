@@ -131,6 +131,36 @@
             transition:.25s ease;
         }
         .sync-btn:hover { opacity:.92; }
+
+
+        .toast-glass {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 14px 22px;
+            border-radius: 22px;
+            background: rgba(255,255,255,0.45);
+            backdrop-filter: blur(18px) saturate(180%);
+            -webkit-backdrop-filter: blur(18px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.55);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            font-size: 14px;
+            color: #0a0a0a;
+            animation: slideIn .35s ease, fadeOut .35s ease 3.5s forwards;
+            z-index: 9999;
+        }
+        .toast-danger {
+            border-color: rgba(255,100,100,0.75);
+            color: #7f1d1d;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+            to   { opacity: 0; transform: translateX(20px); }
+        }
+
     </style>
 </head>
 
@@ -278,6 +308,64 @@
 <script>
 document.addEventListener('DOMContentLoaded', ()=> lucide.createIcons());
 </script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2400,
+        timerProgressBar: true,
+        background: 'rgba(255,255,255,0.55)',
+        color: '#111',
+        iconColor: '#4b5563',
+        customClass: {
+            popup: 'backdrop-blur-xl shadow-xl border border-white/30 rounded-2xl px-5 py-3'
+        },
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    @if(session('success'))
+        Toast.fire({
+            icon: 'success',
+            title: "{{ session('success') }}"
+        })
+    @endif
+
+    @if(session('error'))
+        Toast.fire({
+            icon: 'error',
+            title: "{{ session('error') }}"
+        })
+    @endif
+
+    @if(session('warning'))
+        Toast.fire({
+            icon: 'warning',
+            title: "{{ session('warning') }}"
+        })
+    @endif
+
+});
+</script>
+
+
+<script>
+    window.phTimeNow = () => {
+        return new Date().toLocaleString("en-PH", {
+            timeZone: "Asia/Manila"
+        });
+    };
+</script>
+
 
 </body>
 </html>

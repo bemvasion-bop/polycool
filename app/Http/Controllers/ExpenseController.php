@@ -29,71 +29,67 @@ class ExpenseController extends Controller
     /* ============================================================
      *  STORE EXPENSE
      * ============================================================ */
-    public function store(Request $request)
+    public function store(Request $request, Expense $expense)
     {
+        // =======================
+        // 1️⃣ VALIDATION RULES
+        // =======================
         $validated = $request->validate([
             'project_id'    => 'required|exists:projects,id',
             'expense_type'  => 'required|in:material,custom',
 
-            // Material mode
-            'material_id'   => 'nullable|exists:materials,id',
-            'quantity_used' => 'nullable|numeric|min:0.01',
+            // If MATERIAL expense
+            'material_id'   => 'required_if:expense_type,material|nullable|exists:materials,id',
+            'quantity_used' => 'required_if:expense_type,material|nullable|numeric|min:0.01',
 
-            // Custom mode
-            'category'      => 'nullable|string',
-            'amount'        => 'nullable|numeric|min:0.01',
+            // If CUSTOM expense
+            'category'      => 'required_if:expense_type,custom|string|nullable',
+            'amount'        => 'required_if:expense_type,custom|nullable|numeric|min:0.01',
 
             'expense_date'  => 'required|date',
             'description'   => 'nullable|string|max:255',
             'receipt'       => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
-        // Upload receipt if any
-        if ($request->hasFile('receipt')) {
-            $validated['receipt_path'] =
-                $request->file('receipt')->store('expense_receipts', 'public');
-        }
+        // ⛔ Guarantee: expense_type is lower-case
+        $type = strtolower($request->expense_type);
 
-        // 🚹 Who added this expense
-        $validated['user_id'] = auth()->id();
-        $validated['status']  = 'pending';
+        $expense = new Expense();
+        $expense->project_id = $request->project_id;
+        $expense->user_id = auth()->id();
+        $expense->expense_date = $request->expense_date;
+        $expense->status = 'pending';
 
-        /* ============================================================
-        * MATERIAL EXPENSE MODE
-        * ============================================================ */
         if ($request->expense_type === 'material') {
+            $material = Material::find($request->material_id);
 
-            $material = Material::findOrFail($request->material_id);
+            $expense->material_id   = $material->id;
+            $expense->supplier_id   = $material->supplier_id;
+            $expense->unit_cost     = $material->unit_cost;
+            $expense->quantity_used = $request->quantity_used;
 
-            $validated['material_id']   = $material->id;
-            $validated['supplier_id']   = $material->supplier_id;
-            $validated['unit_cost']     = $material->price_per_unit;
-            $validated['quantity_used'] = $request->quantity_used;
-            $validated['total_cost']    = $validated['unit_cost'] * $validated['quantity_used'];
+            $expense->total_cost    = $material->unit_cost * $request->quantity_used;
+            $expense->amount        = $expense->total_cost;
 
-            // Remove custom fields
-            unset($validated['category'], $validated['amount']);
+        } else {
+            // Custom Expense
+            $expense->material_id   = null;
+            $expense->supplier_id   = null;
+            $expense->quantity_used = null;
+            $expense->unit_cost     = null;
+            $expense->total_cost    = $request->amount;
+            $expense->amount        = $request->amount;
+            $expense->category      = $request->category;
         }
 
-        /* ============================================================
-        * CUSTOM EXPENSE MODE
-        * ============================================================ */
-        if ($request->expense_type === 'custom') {
-
-            $validated['category']   = $request->category;
-            $validated['amount']     = $request->amount;
-            $validated['total_cost'] = $request->amount; // Cost = amount
-
-            // Remove material fields
-            unset($validated['material_id'],
-                $validated['supplier_id'],
-                $validated['unit_cost'],
-                $validated['quantity_used']);
+        if ($request->hasFile('receipt')) {
+            $expense->receipt_path = $request->file('receipt')->store('receipts', 'public');
         }
 
-        Expense::create($validated);
+        $expense->description = $request->description;
+        $expense->save();
 
-        return back()->with('success', 'Expense submitted for approval.');
+        return back()->with('success','Expense added successfully!');
     }
 
 
@@ -251,63 +247,7 @@ class ExpenseController extends Controller
     }
 
 
-    public function adjustQuantity(Request $request, Expense $expense)
-    {
-        if ($expense->material_id === null) abort(403);
-
-        $request->validate([
-            'new_quantity' => 'required|numeric|min:0.01',
-            'reason' => 'required|string'
-        ]);
-
-        $oldQty = $expense->quantity_used;
-        $oldTotal = $expense->total_cost;
-        $unit = $expense->unit_cost;
-
-        $newTotal = $unit * $request->new_quantity;
-
-        // Reverse record
-        Expense::create([
-            'project_id' => $expense->project_id,
-            'material_id' => $expense->material_id,
-            'amount' => -$oldTotal,
-            'status' => 'approved',
-            'is_reversal' => 1,
-            'description' => "Auto-reversal for quantity correction",
-            'expense_date' => now()
-        ]);
-
-        // Update old to revised
-        $expense->status = 'revised';
-        $expense->save();
-
-        // Create corrected expense
-        Expense::create([
-            'project_id' => $expense->project_id,
-            'material_id' => $expense->material_id,
-            'quantity_used' => $request->new_quantity,
-            'unit_cost' => $unit,
-            'amount' => $newTotal,
-            'status' => 'pending',
-            'description' => $request->reason,
-            'expense_date' => now()
-        ]);
-
-        // Log
-        ExpenseLog::create([
-            'expense_id' => $expense->id,
-            'user_id' => auth()->id(),
-            'action' => 'quantity_adjusted',
-            'old_amount' => $oldTotal,
-            'new_amount' => $newTotal,
-            'notes' => "Qty: $oldQty → ".$request->new_quantity
-        ]);
-
-        return back()->with('success', 'Quantity correction submitted for approval.');
-    }
-
-
-    public function adjustMaterialQuantity(Request $request, Expense $expense)
+   public function adjustMaterialQuantity(Request $request, Expense $expense)
     {
         if (!$expense->material_id) {
             return back()->with('error', 'Only material expenses can adjust quantity.');
@@ -346,7 +286,7 @@ class ExpenseController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Create corrected expense
+        // Create corrected expense (new record)
         $corrected = Expense::create([
             'project_id'   => $expense->project_id,
             'material_id'  => $expense->material_id,
@@ -361,39 +301,6 @@ class ExpenseController extends Controller
         ]);
 
         return back()->with('success', 'Material quantity corrected and pending approval.');
-    }
-
-
-    // 🔁 Adjust Qty Handler
-    public function adjustQty(Request $request, $id)
-    {
-        $expense = Expense::findOrFail($id);
-
-        // old values before correction
-        $oldQty = $expense->quantity_used;
-        $oldCost = $expense->amount;
-
-        // update expense
-        $expense->quantity_used = $request->quantity_used;
-        $expense->amount = $expense->unit_cost * $request->quantity_used;
-
-        // IMPORTANT: Send back to the approval flow
-        $expense->status = 'pending';
-
-        $expense->save();
-
-        // A simple audit record for now (you can enhance later)
-        ExpenseAudit::create([
-            'expense_id' => $expense->id,
-            'action' => 'adjust_quantity',
-            'old_quantity' => $oldQty,
-            'new_quantity' => $request->quantity_used,
-            'old_amount' => $oldCost,
-            'new_amount' => $expense->amount,
-            'performed_by' => auth()->id()
-        ]);
-
-        return back()->with('success','Quantity correction submitted for approval!');
     }
 
 

@@ -222,8 +222,10 @@
 
                 <div>
                     <label class="font-medium">Down Payment</label>
-                    <input type="number" id="down_payment" name="down_payment"
-                        class="w-full border rounded-xl p-3 mt-1" value="0">
+                    <input type="text" id="down_payment" name="down_payment"
+                    class="w-full border rounded-xl p-3 mt-1 cursor-text"
+                    placeholder="0.00"
+                    inputmode="decimal">
                 </div>
 
                 <div>
@@ -312,40 +314,82 @@ Thank you for your business! God bless!!!
 {{-- JAVASCRIPT --}}
 {{-- ======================= --}}
 <script>
+// ===========================
 // Autofill client address
+// ===========================
 document.getElementById('client').addEventListener('change', function () {
     let address = this.options[this.selectedIndex].getAttribute('data-address');
     document.getElementById('client_address').value = address;
 });
 
+// ===========================
 // Cancel Modal
+// ===========================
 const modal = document.getElementById('cancelModal');
 document.getElementById('cancelBtn').onclick = () => modal.style.display = 'flex';
 document.getElementById('stayBtn').onclick = () => modal.style.display = 'none';
 
-// CALCULATE TOTALS
+// ===========================
+// RECALCULATE COSTING
+// ===========================
 function recalcTotals() {
     let total = 0;
 
     document.querySelectorAll('.item-volume').forEach(el => {
-        total += parseFloat(el.value) || 0;
+        const v = parseFloat(el.value);
+        if (!isNaN(v)) total += v;
     });
 
     document.getElementById('total_bdft').value = total.toFixed(2);
 
-    let rate = parseFloat(rate_per_bdft.value) || 0;
-    let discount = parseFloat(discount.value) || 0;
+    const rate = parseFloat(document.getElementById('rate_per_bdft').value) || 0;
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
 
     let contract = (total * rate) - discount;
+    if (contract < 0) contract = 0;
     document.getElementById('contract_price').value = contract.toFixed(2);
 
-    let down = parseFloat(down_payment.value) || 0;
-    document.getElementById('balance').value = (contract - down).toFixed(2);
+    let dpInput = document.getElementById('down_payment');
+    let dp = parseFloat(dpInput.value);
+
+    if (isNaN(dp) || dp < 0) dp = 0;
+    if (dp > contract) dp = contract;
+
+    let balance = contract - dp;
+    if (balance < 0) balance = 0;
+
+    document.getElementById('balance').value = balance.toFixed(2);
 }
 
-document.addEventListener('input', recalcTotals);
+// Format 2 decimals only after leaving field
+document.getElementById('down_payment').addEventListener('blur', (e) => {
+    let val = parseFloat(e.target.value);
+    if (!isNaN(val)) {
+        e.target.value = val.toFixed(2);
+    } else {
+        e.target.value = "";
+    }
+    recalcTotals();
+});
 
+// Recalc when typing numeric fields
+['rate_per_bdft', 'discount', 'down_payment'].forEach(id => {
+    document.getElementById(id).addEventListener('input', recalcTotals);
+});
+
+document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('item-volume')) {
+        recalcTotals();
+    }
+});
+
+window.addEventListener('DOMContentLoaded', recalcTotals);
+
+
+
+// ===========================
 // Add row
+// ===========================
 document.getElementById('add_row_btn').onclick = () => {
     let table = document.getElementById('items_table');
     let index = table.rows.length;
@@ -365,17 +409,25 @@ document.getElementById('add_row_btn').onclick = () => {
             <button type="button" class="remove-row text-red-600">Remove</button>
         </td>
     </tr>`;
-
     table.insertAdjacentHTML("beforeend", row);
 };
 
+// ===========================
 // Remove row
-document.addEventListener("click", (e) => {
+// ===========================
+document.addEventListener("click", e => {
     if (e.target.classList.contains("remove-row")) {
         e.target.closest("tr").remove();
         recalcTotals();
     }
 });
+
+// ===========================
+// AUTO CALC ON PAGE LOAD
+// ===========================
+window.addEventListener('DOMContentLoaded', recalcTotals);
+
 </script>
+
 
 @endsection

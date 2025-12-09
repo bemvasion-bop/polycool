@@ -29,7 +29,7 @@
 
                 {{-- TIME IN --}}
                 @if(!$today || !$today->time_in)
-                    <form action="{{ route('attendance.timein') }}" method="POST">
+                    <form action="{{ route('attendance.timein', $activeProjects->first()->id ?? 0) }}" method="POST">
                         @csrf
                         <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                             TIME IN

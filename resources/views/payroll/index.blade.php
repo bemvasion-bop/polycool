@@ -152,43 +152,49 @@
         </thead>
 
         <tbody id="tableBody">
-        @foreach($runs as $i => $run)
-            <tr class="table-row"
-                data-status="{{ $run->status }}"
-                data-text="{{ strtolower($run->payroll_type) }}"
-                data-date="{{ $run->period_start->timestamp }}"
-                data-gross="{{ $run->total_gross }}"
-                data-net="{{ $run->total_net }}"
-            >
-                <td>{{ $i+1 }}</td>
+            @foreach($runs as $i => $run)
+                @php
+                    $periodStart = \Carbon\Carbon::parse($run->period_start);
+                    $periodEnd   = \Carbon\Carbon::parse($run->period_end);
+                @endphp
 
-                <td>{{ $run->period_start->format('M d') }} — {{ $run->period_end->format('M d, Y') }}</td>
+                <tr class="table-row"
+                    data-status="{{ $run->status }}"
+                    data-text="{{ strtolower($run->payroll_type) }}"
+                    data-date="{{ $periodStart->timestamp }}"
+                    data-gross="{{ $run->total_gross }}"
+                    data-net="{{ $run->total_net }}"
+                >
+                    <td>{{ $i+1 }}</td>
 
-                <td class="capitalize">{{ $run->payroll_type }}</td>
+                    <td>{{ $periodStart->format('M d') }} — {{ $periodEnd->format('M d, Y') }}</td>
 
-                <td>₱{{ number_format($run->total_gross, 2) }}</td>
+                    <td class="capitalize">{{ $run->payroll_type }}</td>
 
-                <td>₱{{ number_format($run->total_deductions, 2) }}</td>
+                    <td>₱{{ number_format($run->total_gross, 2) }}</td>
 
-                <td class="font-semibold text-gray-900">
-                    ₱{{ number_format($run->total_net, 2) }}
-                </td>
+                    <td>₱{{ number_format($run->total_deductions, 2) }}</td>
 
-                <td>
-                    <span class="status-pill status-{{ $run->status }}">
-                        {{ ucfirst($run->status) }}
-                    </span>
-                </td>
+                    <td class="font-semibold text-gray-900">
+                        ₱{{ number_format($run->total_net, 2) }}
+                    </td>
 
-                <td class="text-right">
-                    <a href="{{ route('payroll.show', $run->id) }}"
-                       class="text-blue-600 hover:underline">
-                        View
-                    </a>
-                </td>
-            </tr>
-        @endforeach
-        </tbody>
+                    <td>
+                        <span class="status-pill status-{{ $run->status }}">
+                            {{ ucfirst($run->status) }}
+                        </span>
+                    </td>
+
+                    <td class="text-right">
+                        <a href="{{ route('payroll.show', $run->id) }}"
+                        class="text-blue-600 hover:underline">
+                            View
+                        </a>
+                    </td>
+                </tr>
+            @endforeach
+            </tbody>
+
     </table>
 
 </div>

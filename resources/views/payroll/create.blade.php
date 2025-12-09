@@ -1,53 +1,112 @@
 @extends('layouts.app')
 
+@section('page-header')
+<h2 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    Generate Payroll
+</h2>
+@endsection
+
 @section('content')
-<div class="px-10 py-8">
 
-    <h2 class="text-2xl font-semibold mb-6">Generate Payroll</h2>
+<style>
+    /* 🌈 GLASS PANEL */
+    .glass-card {
+        border-radius: 26px;
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(22px) saturate(180%);
+        -webkit-backdrop-filter: blur(22px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.50);
+        box-shadow: 0 15px 45px rgba(0,0,0,0.08);
+        padding: 28px 32px;
+        transition: .3s ease;
+    }
+    .glass-card:hover {
+        box-shadow: 0 25px 65px rgba(0,0,0,0.10);
+    }
 
-    <div class="bg-white shadow rounded-lg p-6 max-w-3xl">
+    /* 🔹 INPUTS */
+    .form-input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.12);
+        background: rgba(255,255,255,0.75);
+        font-size: 14px;
+        transition: .2s ease;
+    }
+    .form-input:focus {
+        border-color: #6366f1;
+        outline: none;
+        background: rgba(255,255,255,0.95);
+        box-shadow: 0 0 0 3px #A5B4FC60;
+    }
 
-        <form action="{{ route('payroll.preview') }}" method="POST">
-            @csrf
+    label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+        display: block;
+    }
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    /* 💜 CTA Button */
+    .primary-btn {
+        background: linear-gradient(to right, #8b5cf6, #6366f1);
+        color: white;
+        padding: 12px 22px;
+        border-radius: 18px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: .25s ease;
+        border: none;
+    }
+    .primary-btn:hover {
+        opacity: .92;
+        transform: translateY(-2px);
+    }
 
-                <div>
-                    <label class="block font-medium mb-1">Start Date</label>
-                    <input type="date" name="start_date"
-                           class="w-full border rounded p-2">
-                </div>
+</style>
 
-                <div>
-                    <label class="block font-medium mb-1">End Date</label>
-                    <input type="date" name="end_date"
-                           class="w-full border rounded p-2">
-                </div>
 
-                <div class="md:col-span-2">
-                    <label class="block font-medium mb-1">Employee</label>
-                    <select name="employee_id" class="w-full border rounded p-2">
-                        @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}">
-                                {{ $emp->given_name }} {{ $emp->last_name }} 
-                                ({{ ucfirst($emp->employment_type) }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+<div class="glass-card max-w-3xl mx-auto">
 
+    <form action="{{ route('payroll.preview') }}" method="POST">
+        @csrf
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div>
+                <label>Start Date</label>
+                <input type="date" name="start_date" class="form-input" required>
             </div>
 
-            <div class="mt-6">
-                <button type="submit"
-                        class="px-6 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-                    Generate Preview
-                </button>
+            <div>
+                <label>End Date</label>
+                <input type="date" name="end_date" class="form-input" required>
             </div>
 
-        </form>
+            <div class="md:col-span-2">
+                <label>Employee</label>
+                <select name="employee_id" class="form-input" required>
+                    @foreach($employees as $emp)
+                        <option value="{{ $emp->id }}">
+                            {{ $emp->given_name }} {{ $emp->last_name }}
+                            ({{ ucfirst($emp->employment_type) }})
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
-    </div>
+        </div>
+
+        <div class="text-right mt-8">
+            <button type="submit" class="primary-btn">
+                Generate Preview
+            </button>
+        </div>
+
+    </form>
 
 </div>
+
 @endsection

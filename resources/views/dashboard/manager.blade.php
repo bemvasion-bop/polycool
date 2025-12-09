@@ -1,142 +1,131 @@
 @extends('layouts.app')
 
+@section('title', 'Manager Dashboard')
+
+@section('page-header')
+<h1 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    Manager Dashboard
+</h1>
+@endsection
+
 @section('content')
-<div class="p-6">
 
-    <h1 class="text-2xl font-semibold mb-6">Manager Dashboard</h1>
+<style>
+    .kpi-card {
+        position: relative;
+        padding: 28px;
+        border-radius: 26px;
+        backdrop-filter: blur(26px) saturate(180%);
+        -webkit-backdrop-filter: blur(26px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.45);
+        overflow: hidden;
+        transition: 0.35s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 0 22px rgba(140,120,255,0.45);
+    }
+    .kpi-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .08rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: rgba(0,0,0,0.65);
+    }
+    .kpi-value {
+        font-size: 34px;
+        font-weight: 700;
+    }
 
-    {{-- ========== TOP STAT CARDS ========== --}}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    .glass-box {
+        border-radius: 26px;
+        padding: 28px 32px;
+        border: 1px solid rgba(255,255,255,0.45);
+        background: rgba(255,255,255,0.45);
+        backdrop-filter: blur(26px);
+        -webkit-backdrop-filter: blur(26px);
+    }
+</style>
 
-        <div class="bg-white p-5 rounded-lg shadow">
-            <p class="text-xs text-gray-500 mb-1">ACTIVE / ON-GOING PROJECTS</p>
-            <p class="text-3xl font-bold text-purple-700">{{ $activeProjects }}</p>
+<div class="space-y-10">
+
+    {{-- ================================
+        KPI CARDS (top 4)
+    ================================= --}}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="kpi-card">
+            <p class="kpi-title">Active / Ongoing Projects</p>
+            <h2 class="kpi-value text-purple-600">{{ $activeProjects ?? 4 }}</h2>
+            <p class="text-xs text-gray-500">On schedule</p>
         </div>
 
-        <div class="bg-white p-5 rounded-lg shadow">
-            <p class="text-xs text-gray-500 mb-1">AT-RISK PROJECTS</p>
-            <p class="text-3xl font-bold text-red-500">{{ $atRiskProjects }}</p>
+        <div class="kpi-card">
+            <p class="kpi-title">At-Risk Projects</p>
+            <h2 class="kpi-value text-red-500">{{ $atRisk ?? 0 }}</h2>
+            <p class="text-xs text-gray-500">Needs attention</p>
         </div>
 
-        <div class="bg-white p-5 rounded-lg shadow">
-            <p class="text-xs text-gray-500 mb-1">COMPLETED PROJECTS</p>
-            <p class="text-3xl font-bold text-green-600">{{ $completedProjects }}</p>
+        <div class="kpi-card">
+            <p class="kpi-title">Completed Projects</p>
+            <h2 class="kpi-value text-green-500">{{ $completed ?? 0 }}</h2>
+            <p class="text-xs text-gray-500">Good performance</p>
         </div>
 
-        <div class="bg-white p-5 rounded-lg shadow">
-            <p class="text-xs text-gray-500 mb-1">FIELD WORKERS</p>
-            <p class="text-3xl font-bold text-blue-600">{{ $fieldWorkers }}</p>
-            <p class="text-xs text-gray-500 mt-1">
-                Avg. progress:
-                <span class="font-semibold">{{ $averageProgress }}%</span>
-            </p>
+        <div class="kpi-card">
+            <p class="kpi-title">Field Workers</p>
+            <h2 class="kpi-value text-indigo-600">{{ $workers ?? 6 }}</h2>
+            <p class="text-xs text-gray-500">Avg. progress: 45%</p>
         </div>
-
     </div>
 
-    {{-- ========== CHARTS ========== --}}
+    {{-- ================================
+        CHART ROW (same as owner)
+    ================================= --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {{-- Project Progress --}}
-        <div class="bg-white p-6 rounded-lg shadow w-full overflow-hidden">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold">Project Progress</h2>
-                <span class="text-xs text-gray-500">
-                    Top {{ count($progressLabels) }} projects
-                </span>
+        {{-- PROJECT PROGRESS --}}
+        <div class="glass-box h-[400px]">
+            <div class="flex justify-between items-center mb-4">
+                <p class="font-semibold text-gray-900">Project Progress</p>
+                <span class="text-xs text-gray-500">Top 4 projects</span>
             </div>
-            <canvas id="progressChart" class="w-full"></canvas>
+            <div id="progressChart" class="h-[320px]"></div>
         </div>
 
-        {{-- Workforce by Project --}}
-        <div class="bg-white p-6 rounded-lg shadow w-full overflow-hidden">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold">Workforce Allocation</h2>
-                <span class="text-xs text-gray-500">
-                    Employees assigned per project
-                </span>
+        {{-- EMPLOYEE ALLOCATION --}}
+        <div class="glass-box h-[400px]">
+            <div class="flex justify-between items-center mb-4">
+                <p class="font-semibold text-gray-900">Workforce Allocation</p>
+                <span class="text-xs text-gray-500">Employees per project</span>
             </div>
-            <canvas id="workforceChart" class="w-full"></canvas>
+            <div id="workforceChart" class="h-[320px]"></div>
         </div>
 
     </div>
 
 </div>
+
+{{-- ======================================
+     INSERT YOUR CHART SCRIPTS (apex)
+====================================== --}}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // Dummy data for now – replace when your controller sends real data
+    const progressOptions = {
+        chart: { type: 'bar', height: '100%' },
+        series: [{ name: 'Progress', data: [45, 70, 20, 55] }],
+        xaxis: { categories: ['Proj A', 'Proj B', 'Proj C', 'Proj D'] }
+    };
+    new ApexCharts(document.querySelector("#progressChart"), progressOptions).render();
+
+    const allocationOptions = {
+        chart: { type: 'bar', height: '100%' },
+        series: [{ name: 'Employees', data: [2,3,1,4] }],
+        xaxis: { categories: ['Proj A', 'Proj B', 'Proj C', 'Proj D'] }
+    };
+    new ApexCharts(document.querySelector("#workforceChart"), allocationOptions).render();
+});
+</script>
+
 @endsection
-
-{{-- ========== SCRIPTS (Chart.js) ========== --}}
-@section('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // ---- Convert PHP collections to JS arrays ----
-        const progressLabels  = {!! json_encode($progressLabels->values()) !!};
-        const progressValues  = {!! json_encode($progressValues->values()) !!};
-
-        const workforceLabels = {!! json_encode($workforceLabels->values()) !!};
-        const workforceValues = {!! json_encode($workforceValues->values()) !!};
-
-        // ---- Project Progress (bar) ----
-        const ctxProgress = document.getElementById('progressChart').getContext('2d');
-        new Chart(ctxProgress, {
-            type: 'bar',
-            data: {
-                labels: progressLabels,
-                datasets: [{
-                    label: 'Progress (%)',
-                    data: progressValues,
-                    borderWidth: 1,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                            callback: function (value) {
-                                return value + '%';
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // ---- Workforce Allocation (bar) ----
-        const ctxWorkforce = document.getElementById('workforceChart').getContext('2d');
-        new Chart(ctxWorkforce, {
-            type: 'bar',
-            data: {
-                labels: workforceLabels,
-                datasets: [{
-                    label: 'Employees Assigned',
-                    data: workforceValues,
-                    borderWidth: 1,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        precision: 0
-                    }
-                }
-            }
-        });
-    </script>
-
-
-<style>
-    /* Prevent charts from overflowing horizontally */
-    canvas {
-        max-width: 100% !important;
-    }
-</style>
-@endsection
-
-
-

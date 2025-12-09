@@ -197,8 +197,8 @@ $groups = [
             </div>
 
             <div class="mt-2 text-sm">
-                <p class="text-xs text-gray-500">Price</p>
-                <p class="text-lg font-bold">₱{{ number_format($project->final_project_price,2) }}</p>
+                <p class="text-xs text-gray-500">Contract Price</p>
+                <p class="text-lg font-bold">₱{{ number_format($project->total_price,2) }}</p>
             </div>
 
             <div class="mt-2">

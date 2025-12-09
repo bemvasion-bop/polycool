@@ -1,46 +1,116 @@
 @extends('layouts.app')
 
+@section('page-header')
+<h2 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    Material Details
+</h2>
+@endsection
+
 @section('content')
-<div class="p-10 max-w-4xl mx-auto">
 
-    <div class="bg-white p-8 rounded-lg shadow">
+<style>
+    /* 🌈 GLASS CARD */
+    .glass-card {
+        border-radius: 26px;
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(22px) saturate(180%);
+        -webkit-backdrop-filter: blur(22px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.45);
+        padding: 36px 42px;
+        box-shadow: 0 18px 55px rgba(0,0,0,0.08);
+        max-width: 900px;
+        margin: auto;
+        transition: .25s ease;
+    }
 
-        <h2 class="text-2xl font-semibold mb-4">{{ $material->name }}</h2>
+    .label-text {
+        font-weight: 600;
+        color: #111;
+        margin-right: 4px;
+    }
 
-        <p><strong>Category:</strong> {{ $material->category ?? '—' }}</p>
-        <p><strong>Unit:</strong> {{ $material->unit ?? '—' }}</p>
-        <p><strong>Price per Unit:</strong> ₱{{ number_format($material->price_per_unit, 2) }}</p>
+    .detail-value {
+        color: #374151;
+    }
 
-        <p><strong>Supplier:</strong>
-            {{ $material->supplier->name ?? '—' }}
-        </p>
+    /* 🔘 BUTTONS */
+    .btn {
+        padding: 10px 18px;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: .25s ease;
+    }
 
-        <p><strong>Notes:</strong> {{ $material->notes ?? '—' }}</p>
+    .btn-edit {
+        background: linear-gradient(to right, #7c3aed, #6366f1);
+        color: white;
+    }
+    .btn-edit:hover {
+        opacity: .9;
+        transform: translateY(-2px);
+    }
 
-        <hr class="my-6">
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+    .btn-delete:hover {
+        background: #dc2626;
+    }
 
-        <div class="flex space-x-3">
-            <a href="{{ route('materials.edit', $material) }}"
-               class="px-5 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                Edit
-            </a>
+    .btn-back {
+        background: #e5e7eb;
+        color: #111;
+    }
+    .btn-back:hover {
+        background: #d1d5db;
+    }
+</style>
 
-            <form action="{{ route('materials.destroy', $material) }}"
-                  method="POST"
-                  onsubmit="return confirm('Delete this material?')">
-                @csrf @method('DELETE')
-                <button class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                    Delete
-                </button>
-            </form>
 
-            <a href="{{ route('materials.index') }}"
-               class="px-5 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                Back
-            </a>
-        </div>
+<div class="glass-card">
 
+    <h3 class="text-2xl font-semibold mb-6">{{ $material->name }}</h3>
+
+    <div class="space-y-2 text-sm">
+        <p><span class="label-text">Category:</span>
+           <span class="detail-value">{{ $material->category ?? '—' }}</span></p>
+
+        <p><span class="label-text">Unit:</span>
+           <span class="detail-value">{{ $material->unit ?? '—' }}</span></p>
+
+        <p><span class="label-text">Price/Unit:</span>
+           <span class="detail-value">₱{{ number_format($material->price_per_unit, 2) }}</span></p>
+
+        <p><span class="label-text">Supplier:</span>
+           <span class="detail-value">{{ $material->supplier->name ?? '—' }}</span></p>
+
+        <p><span class="label-text">Notes:</span>
+           <span class="detail-value">{{ $material->notes ?? '—' }}</span></p>
+    </div>
+
+    <hr class="my-8 border-gray-300/60">
+
+    <div class="flex items-center gap-3">
+        <a href="{{ route('materials.edit', $material->id) }}" class="btn btn-edit">
+            Edit
+        </a>
+
+        <form action="{{ route('materials.destroy', $material->id) }}"
+              method="POST"
+              onsubmit="return confirm('Delete this material?')">
+            @csrf @method('DELETE')
+            <button class="btn btn-delete">
+                Delete
+            </button>
+        </form>
+
+        <a href="{{ route('materials.index') }}" class="btn btn-back">
+            Back
+        </a>
     </div>
 
 </div>
+
 @endsection

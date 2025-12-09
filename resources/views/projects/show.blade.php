@@ -596,8 +596,13 @@
                         @if(in_array(auth()->user()->system_role, ['owner','accounting','audit']))
                         <div class="mt-6 text-right">
                             <button
-                                onclick="window.location.href='{{ route('payments.audit.pdf', $payment->id) }}'"
-                                class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                                @if($project->payments->count() == 0)
+                                    disabled
+                                    class="px-4 py-2 bg-gray-300 text-white rounded cursor-not-allowed"
+                                @else
+                                    onclick="window.location.href='{{ route('projects.audit.pdf', $project->id) }}'"
+                                    class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                                @endif >
                                 Print Audit Review PDF
                             </button>
                         </div>
@@ -830,7 +835,7 @@
                                         Unit Cost: ₱{{ number_format($expense->unit_cost, 2) }}<br>
                                         Quantity: {{ $expense->quantity_used }}<br>
                                         <span class="font-semibold">
-                                            Total: ₱{{ number_format($expense->amount, 2) }}
+                                            Total: ₱{{ number_format($expense->total_cost, 2) }}
                                         </span>
                                     </p>
                                 @else
@@ -847,6 +852,7 @@
                                     @endif
                                 @endif
                             </td>
+
 
                             {{-- COST CALC --}}
                             <td class="p-3 border">
@@ -882,98 +888,100 @@
 
                             {{-- STATUS --}}
                             <td class="p-3 border">
-                                @if($expense->status === 'pending')
+                                @if($expense->status == 'pending')
                                     <span class="px-3 py-1 bg-yellow-400 text-black rounded text-xs">Pending</span>
-                                @elseif($expense->status === 'approved')
+
+                                @elseif($expense->status == 'approved')
                                     <span class="px-3 py-1 bg-green-500 text-white rounded text-xs">Approved</span>
-                                @elseif($expense->status === 'cancelled')
+
+                                @elseif($expense->status == 'cancelled')
                                     <span class="px-3 py-1 bg-red-600 text-white rounded text-xs">Cancelled</span>
-                                @elseif($expense->status === 'reissued')
+
+                                @elseif($expense->status == 'reversed')
                                     <span class="px-3 py-1 bg-purple-600 text-white rounded text-xs">Reissued</span>
+
+                                @elseif($expense->status == 'revised')
+                                    <span class="px-3 py-1 bg-blue-600 text-white rounded text-xs">Corrected</span>
+
                                 @else
-                                    <span class="text-gray-400 text-xs italic">—</span>
+                                    <span class="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs">
+                                        {{ ucfirst($expense->status ?? '—') }}
+                                    </span>
                                 @endif
                             </td>
 
 
-                            <td class="px-3 py-1 text-sm text-center">
+                            {{-- ACTIONS --}}
+                                <td class="px-3 py-1 text-sm text-center">
 
-                                {{-- ================================
-                                    MANAGER correcting REISSUED
-                                    ================================ --}}
-                                @if(auth()->user()->system_role === 'manager'
-                                    && $expense->status === 'reissued')
-
+                                    {{-- MATERIAL EXPENSES --}}
                                     @if($expense->material_id)
-                                        {{-- MATERIAL Correction → Adjust Qty --}}
-                                        <button onclick="showAdjustQuantityModal({{ $expense->id }}, {{ $expense->quantity_used ?? 0 }})"
+
+                                        {{-- Manager can correct ONLY if reversed --}}
+                                        @if(auth()->user()->system_role === 'manager'
+                                            && strtolower($expense->status) === 'reversed')
+
+                                            <button onclick="showAdjustQuantityModal({{ $expense->id }}, {{ $expense->quantity_used ?? 0 }})"
                                                 class="text-purple-600 hover:underline text-sm">
-                                            Adjust Qty
-                                        </button>
+                                                Adjust Qty
+                                            </button>
+
+                                        @else
+                                            <span class="text-gray-300 text-sm">—</span>
+                                        @endif
+
+
+                                    {{-- CUSTOM EXPENSES --}}
                                     @else
-                                        {{-- CUSTOM Correction → Re-Issue Expense --}}
-                                        <button onclick="showExpenseReIssueModal({{ $expense->id }})"
+
+                                        {{-- Manager corrects ONLY if reversed --}}
+                                        @if(strtolower($expense->status) === 'reversed'
+                                            && auth()->user()->system_role === 'manager')
+
+                                            <button onclick="showExpenseReIssueModal({{ $expense->id }})"
                                                 class="text-purple-600 hover:underline text-sm">
-                                            Re-Issue Expense
-                                        </button>
+                                                Re-Issue Expense
+                                            </button>
+
+
+                                        {{-- Pending → Owner/Accounting Approval --}}
+                                        @elseif($expense->status === 'pending'
+                                            && in_array(auth()->user()->system_role, ['owner','accounting']))
+
+                                            <form action="{{ route('expenses.approve', $expense->id) }}" method="POST" class="inline">
+                                                @csrf
+                                                <button class="text-green-600 hover:underline text-sm">Approve</button>
+                                            </form>
+
+                                            <form action="{{ route('expenses.reject', $expense->id) }}" method="POST" class="inline ml-2">
+                                                @csrf
+                                                <button class="text-red-600 hover:underline text-sm">Reject</button>
+                                            </form>
+
+
+                                        {{-- Approved → Accounting can Cancel & Re-Issue --}}
+                                        @elseif($expense->status === 'approved'
+                                            && in_array(auth()->user()->system_role, ['owner','accounting']))
+
+                                            <form action="{{ route('expenses.cancel', $expense->id) }}" method="POST" class="inline-block">
+                                                @csrf
+                                                <button type="submit" class="text-red-500 hover:underline"
+                                                    onclick="return confirm('Cancel & re-issue this expense?')">
+                                                    Cancel & Re-Issue
+                                                </button>
+                                            </form>
+
+
+                                        {{-- The rest --}}
+                                        @else
+                                            <span class="text-gray-300 text-sm">—</span>
+                                        @endif
+
                                     @endif
 
-
-                                {{-- =====================================
-                                    OWNER/ACCOUNTING: Pending CUSTOM
-                                    ===================================== --}}
-                                @elseif(in_array(auth()->user()->system_role, ['owner','accounting'])
-                                    && !$expense->material_id
-                                    && $expense->status === 'pending')
-
-                                    <form action="{{ route('expenses.approve', $expense->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button class="text-green-600 hover:underline text-sm">Approve</button>
-                                    </form>
-
-                                    <form action="{{ route('expenses.reject', $expense->id) }}" method="POST" class="inline ml-2">
-                                        @csrf
-                                        <button class="text-red-600 hover:underline text-sm">Reject</button>
-                                    </form>
+                                </td>
 
 
-                                {{-- ====================================
-                                    OWNER/ACCOUNTING: Approved CUSTOM
-                                    ==================================== --}}
-                                @elseif(in_array(auth()->user()->system_role, ['owner','accounting'])
-                                    && !$expense->material_id
-                                    && $expense->status === 'approved')
-
-                                    <form action="{{ route('expenses.cancel', $expense->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button class="text-red-600 hover:underline text-sm"
-                                            onclick="return confirm('Cancel & Re-issue this expense?')">
-                                            Cancel & Re-Issue
-                                        </button>
-                                    </form>
-
-
-                                {{-- ====================================
-                                    MANAGER: Approved MATERIAL
-                                    ==================================== --}}
-                                @elseif(auth()->user()->system_role === 'manager'
-                                    && $expense->material_id
-                                    && $expense->status === 'approved')
-
-                                    <button onclick="showAdjustQuantityModal({{ $expense->id }}, {{ $expense->quantity_used ?? 0 }})"
-                                            class="text-purple-600 hover:underline text-sm">
-                                        Adjust Qty
-                                    </button>
-
-
-                                {{-- ====================================
-                                    Everyone else → No permission
-                                    ==================================== --}}
-                                @else
-                                    <span class="text-gray-300 text-sm">—</span>
-                                @endif
-
-                            </td>
                     </tr>
 
                     @empty

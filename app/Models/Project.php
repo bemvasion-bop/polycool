@@ -260,6 +260,15 @@ class Project extends Model
         return $this->hasMany(AttendanceLog::class, 'project_id');
     }
 
+    public static function employeeHasActiveProject($employeeId)
+    {
+        return self::whereHas('users', function($q) use ($employeeId) {
+            $q->where('user_id', $employeeId);
+        })
+        ->where('status', '!=', 'completed')
+        ->exists();
+    }
+
 
 
 

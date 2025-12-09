@@ -188,9 +188,10 @@
                     data-client="{{ $q->client->name }}"
                     data-price="{{ $q->contract_price }}"
                     data-date="{{ \Carbon\Carbon::parse($q->quotation_date)->timestamp }}"
-                    data-status="{{ $q->status }}"
-                    data-text="{{ strtolower($q->client->name.' '.$q->project_name) }}"
-                >
+                    data-status="{{ $q->project ? 'converted' : $q->status }}"
+                    data-text="{{ strtolower($q->client->name.' '.$q->project_name) }}">
+
+
                     <td class="p-3">{{ $index + 1 }}</td>
                     <td class="p-3">{{ $q->client->name }}</td>
                     <td class="p-3">{{ $q->project_name }}</td>
@@ -198,8 +199,12 @@
                     <td class="p-3">₱{{ number_format($q->contract_price, 2) }}</td>
 
                     <td class="p-3">
-                        <span class="status-pill status-{{ $q->status }}">
-                            {{ ucfirst($q->status) }}
+                        @php
+                            $status = $q->status;
+                        @endphp
+
+                        <span class="status-pill status-{{ $status }}">
+                            {{ ucfirst($status) }}
                         </span>
                     </td>
 
@@ -229,8 +234,12 @@
             </p>
 
             <p class="mt-2">
-                <span class="status-pill status-{{ $q->status }}">
-                    {{ ucfirst($q->status) }}
+                @php
+                    $status = $q->status;
+                @endphp
+
+                <span class="status-pill status-{{ $status }}">
+                    {{ ucfirst($status) }}
                 </span>
             </p>
 

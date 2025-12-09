@@ -57,14 +57,13 @@ class User extends Authenticatable
     ];
 
     // ---------- FULL NAME ----------
+
     public function getFullNameAttribute()
     {
-        return trim(
-            "{$this->given_name} " .
-            ($this->middle_name ? "{$this->middle_name} " : "") .
-            "{$this->last_name}"
-        );
+        $middle = $this->middle_name ? ' ' . $this->middle_name . ' ' : ' ';
+        return trim($this->given_name . $middle . $this->last_name);
     }
+
 
     // ---------- RELATIONSHIPS ----------
     public function attendanceLogs()
@@ -117,4 +116,6 @@ class User extends Authenticatable
                     ->withPivot(['role_in_project', 'assigned_at'])
                     ->withTimestamps();
     }
+
+
 }

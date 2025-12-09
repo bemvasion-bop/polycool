@@ -56,7 +56,7 @@ class Quotation extends Model
 
     public function project()
     {
-        return $this->belongsTo(Project::class, 'converted_project_id');
+        return $this->hasOne(Project::class, 'quotation_id');
     }
 
     // Helpers

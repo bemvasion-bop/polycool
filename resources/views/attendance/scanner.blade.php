@@ -1,15 +1,79 @@
 @extends('layouts.app')
 
+@section('page-header')
+<h2 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    QR Scanner
+</h2>
+@endsection
+
 @section('content')
-<div class="max-w-4xl mx-auto">
 
-    <h2 class="text-2xl font-bold mb-4">QR Scanner</h2>
+<style>
+    .glass-box {
+        border-radius: 26px;
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(26px);
+        border: 1px solid rgba(255,255,255,0.45);
+        padding: 26px 32px;
+        box-shadow: 0 18px 55px rgba(0,0,0,0.08);
+    }
 
-    {{-- Project selector --}}
-    <div class="bg-white p-4 rounded shadow mb-6 flex items-center space-x-4">
-        <label class="font-semibold">Active Project:</label>
+    select {
+        background: rgba(255,255,255,0.75);
+        border: 1px solid rgba(255,255,255,0.65);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 14px;
+        width: 260px;
+        outline: none;
+    }
 
-        <select id="projectSelect" class="border rounded px-3 py-2 w-80">
+    #qr-reader {
+        border-radius: 18px;
+        overflow: hidden;
+        background: #000;
+        margin: 0 auto;
+        max-width: 480px;
+        padding: 10px;
+    }
+
+    #scanResult {
+        margin-top: 14px;
+        font-size: 14px;
+        border-radius: 18px;
+        padding: 12px 18px;
+        backdrop-filter: blur(10px);
+    }
+
+    .success {
+        background: rgba(187,247,208,0.85);
+        color: #166534;
+        border: 1px solid rgba(16,185,129,0.45);
+    }
+    .error {
+        background: rgba(254,202,202,0.85);
+        color: #991b1b;
+        border: 1px solid rgba(239,68,68,0.45);
+    }
+    .neutral {
+        background: rgba(255,255,255,0.75);
+        color: #4b5563;
+        border: 1px solid rgba(229,231,235,0.7);
+    }
+</style>
+
+
+{{-- ============================================= --}}
+{{-- QR Scanner Section --}}
+{{-- ============================================= --}}
+<div class="glass-box w-full max-w-4xl mx-auto space-y-6">
+
+    {{-- Project Selection --}}
+    <div class="flex items-center gap-4">
+        <label class="font-semibold text-sm">Active Project:</label>
+
+        <select id="projectSelect">
             <option value="">-- Select project --</option>
             @foreach($projects as $project)
                 <option value="{{ $project->id }}">
@@ -19,35 +83,30 @@
         </select>
     </div>
 
-    {{-- Scanner --}}
-    <div class="bg-white p-4 rounded shadow">
-        <div id="qr-reader" style="width: 400px; max-width: 100%;"></div>
-
-        <div id="scanResult"
-             class="mt-4 text-sm p-3 rounded bg-gray-100 text-gray-800">
-            Waiting for scan...
-        </div>
+    {{-- Camera & Scanner --}}
+    <div class="text-center w-full">
+        <div id="qr-reader"></div>
+        <div id="scanResult" class="neutral">Waiting for scan...</div>
     </div>
+
 </div>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
-    const resultBox = document.getElementById('scanResult');
+    const scanResult = document.getElementById('scanResult');
     const projectSelect = document.getElementById('projectSelect');
     const scanUrl = "{{ route('attendance.scan') }}";
 
-    function logResult(msg, isError = false) {
-        resultBox.textContent = msg;
-        resultBox.className =
-            "mt-4 text-sm p-3 rounded " +
-            (isError ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700");
+    function showResult(msg, type = "neutral") {
+        scanResult.textContent = msg;
+        scanResult.className = type;
     }
 
     function onScanSuccess(decodedText) {
 
         if (!projectSelect.value) {
-            logResult("Please select a project before scanning.", true);
+            showResult("⚠ Please select a project before scanning.", "error");
             return;
         }
 
@@ -65,34 +124,32 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                logResult("✔ " + data.message + " — " + data.employee);
+                showResult("✔ " + data.message + " — " + data.employee, "success");
             } else {
-                logResult("⚠ " + data.message, true);
+                showResult("⚠ " + data.message, "error");
             }
         })
         .catch(() => {
-            logResult("Server error while processing scan.", true);
+            showResult("Server error while processing scan.", "error");
         });
     }
 
 
-    // Start QR Scanner
+    // Init Scanner
     const html5QrCode = new Html5Qrcode("qr-reader");
 
     Html5Qrcode.getCameras().then(cameras => {
-        if (cameras && cameras.length) {
-            const cameraId = cameras[0].id;
+        if (cameras.length) {
             html5QrCode.start(
-                cameraId,
-                { fps: 10, qrbox: 250 },
-                onScanSuccess,
-                () => {}
+                cameras[0].id,
+                { fps: 10, qrbox: { width: 300, height: 300 } },
+                onScanSuccess
             );
         } else {
-            logMessage("No camera found on this device.", true);
+            showResult("No camera found on this device.", "error");
         }
     }).catch(err => {
-        logMessage("Camera access error: " + err, true);
+        showResult("Camera access error: " + err, "error");
     });
 </script>
 

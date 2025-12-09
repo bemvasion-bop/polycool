@@ -115,28 +115,48 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $assignedProjects = $user->projects()
-            ->with('client')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // ========================
+        // KPI DATA
+        // ========================
+        $attendanceCount = \App\Models\Attendance::where('user_id', $user->id)->count();
 
-        $todayLog = AttendanceLog::where('user_id', $user->id)
-            ->where('date', today()->toDateString())
-            ->first();
+        $hoursWorked = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->selectRaw('SUM(TIMESTAMPDIFF(HOUR, time_in, time_out)) as total_hours')
+            ->value('total_hours') ?? 0;
 
-        $recentLogs = AttendanceLog::where('user_id', $user->id)
-            ->with('project')
-            ->orderBy('date', 'desc')
-            ->limit(5)
-            ->get();
+        $activeProjects = $user->projects()->where('status', 'active')->get();
+        $activeProjectsCount = $activeProjects->count();
+
+        $latestPayroll = \App\Models\PayrollEntry::where('user_id', $user->id)
+            ->latest('created_at')->first();
+        $latestPayrollAmount = $latestPayroll->net_pay ?? 0;
+
+        // ========================
+        // Attendance for today
+        // ========================
+        $hasAttendanceToday = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereDate('created_at', today())
+            ->exists();
+
+        $hasTimeOut = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereDate('created_at', today())
+            ->whereNotNull('time_out')
+            ->exists();
 
         return view('dashboard.employee', compact(
-            'user',
-            'assignedProjects',
-            'todayLog',
-            'recentLogs'
+            'activeProjects',
+            'activeProjectsCount',
+            'attendanceCount',
+            'hoursWorked',
+            'latestPayroll',
+            'latestPayrollAmount',
+            'hasAttendanceToday',
+            'hasTimeOut'
         ));
     }
+
+
 
     /* ============================================================
      * ACCOUNTING DASHBOARD
