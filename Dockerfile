@@ -32,7 +32,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # Copy Supervisor config
-COPY ./.render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # ============================
 # 4️⃣ SUPERVISOR START COMMAND
