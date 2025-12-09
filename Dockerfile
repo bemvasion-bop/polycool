@@ -18,15 +18,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # 3️⃣ APP SETUP
 # ==========================================
 WORKDIR /var/www/html
-
-# Copy Laravel app files
 COPY . .
 
-# Install PHP dependencies (Production Mode)
 RUN composer install --no-dev --optimize-autoloader
 
-# Folder Permissions
-RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# Fix PHP-FPM running as root problem
+RUN sed -i "s/user = .*/user = www-data/" /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i "s/group = .*/group = www-data/" /usr/local/etc/php-fpm.d/www.conf
 
 # ==========================================
 # 4️⃣ NGINX CONFIG
@@ -34,14 +35,14 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # ==========================================
-# 5️⃣ SUPERVISOR CONFIG (IMPORTANT FIX)
+# 5️⃣ SUPERVISOR CONFIG
 # ==========================================
 COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Debug: Check file is present (shows in logs)
+# Debug check
 RUN ls -R /etc/supervisor/conf.d
 
 # ==========================================
-# 6️⃣ START SERVICES (Nginx + PHP-FPM)
+# 6️⃣ START SERVICES
 # ==========================================
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
