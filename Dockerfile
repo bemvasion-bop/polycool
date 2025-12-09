@@ -1,5 +1,5 @@
 # ==========================================
-# 1️⃣ BASE IMAGE
+# 1️⃣ BASE IMAGE: PHP 8.2 with FPM
 # ==========================================
 FROM php:8.2-fpm
 
@@ -18,47 +18,31 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # 3️⃣ APP SETUP
 # ==========================================
 WORKDIR /var/www/html
-
-# Copy all app files
 COPY . .
 
-# Install optimized dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# ==========================================
-# 4️⃣ FIX PHP-FPM RUNNING AS ROOT 🚑
-# ==========================================
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# Fix PHP-FPM running as root problem
 RUN sed -i "s/user = .*/user = www-data/" /usr/local/etc/php-fpm.d/www.conf \
     && sed -i "s/group = .*/group = www-data/" /usr/local/etc/php-fpm.d/www.conf
 
 # ==========================================
-# 5️⃣ PERMISSIONS (VERY IMPORTANT)
-# ==========================================
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
-
-# ==========================================
-# 6️⃣ NGINX CONFIG
+# 4️⃣ NGINX CONFIG
 # ==========================================
 COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # ==========================================
-# 7️⃣ SUPERVISOR CONFIG
+# 5️⃣ SUPERVISOR CONFIG
 # ==========================================
 COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Debug: show config presence
+# Debug check
 RUN ls -R /etc/supervisor/conf.d
 
 # ==========================================
-# 8️⃣ LARAVEL CACHE CLEAR (avoids 500 errors)
-# ==========================================
-RUN php artisan config:clear \
-    && php artisan cache:clear \
-    && php artisan route:clear \
-    && php artisan view:clear
-
-# ==========================================
-# 9️⃣ START SERVICES
+# 6️⃣ START SERVICES
 # ==========================================
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
