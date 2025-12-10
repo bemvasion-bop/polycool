@@ -29,6 +29,8 @@
 
 <div class="space-y-10">
 
+
+
     {{-- ============================================================
         🌈 KPI CARDS — Self-Only Data
     ============================================================ --}}
@@ -53,30 +55,6 @@
         </div>
     </div>
 
-    {{-- ============================================================
-        🕒 TODAY'S ATTENDANCE BUTTON
-    ============================================================ --}}
-    <div class="glass-card p-6">
-        <h3 class="font-semibold text-lg mb-4">Today's Attendance</h3>
-
-        @if(!$hasAttendanceToday)
-            <form action="{{ route('attendance.timein', $activeProjects->first()->id ?? 0) }}" method="POST">
-                @csrf
-                <button type="submit" class="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">
-                    Time In
-                </button>
-            </form>
-        @elseif(!$hasTimeOut)
-            <form action="{{ route('attendance.timeout') }}" method="POST">
-                @csrf
-                <button type="submit" class="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600">
-                    Time Out
-                </button>
-            </form>
-        @else
-            <p class="text-green-600 font-medium">Attendance completed today ✔</p>
-        @endif
-    </div>
 
     {{-- ============================================================
         🧱 CURRENT PROJECTS ASSIGNED

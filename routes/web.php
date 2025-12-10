@@ -20,7 +20,8 @@ use App\Http\Controllers\{
     QuotationController,
     SupplierController,
     SyncAllController,
-    WeatherController
+    WeatherController,
+    EmployeeDashboardController,
 };
 
 
@@ -188,6 +189,18 @@ Route::middleware(['auth', 'role:employee'])->group(function () {
     Route::get('/cashadvance/request', [CashAdvanceController::class, 'requestForm'])->name('cashadvance.requestForm');
     Route::post('/cashadvance/request', [CashAdvanceController::class, 'submitRequest'])->name('cashadvance.submit');
     Route::get('/cashadvance/my-requests', [CashAdvanceController::class, 'myRequests'])->name('cashadvance.myRequests');
+
+    Route::get('/employee/profile', [EmployeeDashboardController::class, 'profile'])
+        ->name('employee.profile');
+
+    Route::post('/employee/profile/update', [EmployeeDashboardController::class, 'updateProfile'])
+        ->name('employee.profile.update');
+
+    Route::post('/employee/profile/password', [EmployeeDashboardController::class, 'updatePassword'])
+        ->name('employee.profile.password');
+
+    Route::get('/employee/attendance', [EmployeeDashboardController::class, 'attendance'])
+        ->name('employee.attendance');
 });
 
 

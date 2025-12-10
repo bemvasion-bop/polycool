@@ -275,6 +275,18 @@
         </form>
         @endif
 
+        {{-- EMPLOYEE ONLY: My Profile --}}
+        @if(auth()->user()->system_role == 'owner' || auth()->user()->system_role == 'manager')
+            <a href="{{ route('attendance.manage') }}" class="sidebar-item">
+                Attendance Manager
+            </a>
+        @elseif(auth()->user()->system_role == 'employee')
+            <a href="{{ route('employee.attendance') }}" class="sidebar-item">
+                My Attendance
+            </a>
+        @endif
+
+
         {{-- User Info --}}
         <div class="mt-8 border-t border-white/40 pt-4">
             <p class="text-xs text-gray-700">{{ auth()->user()->system_role }}</p>

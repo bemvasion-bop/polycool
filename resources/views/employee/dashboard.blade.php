@@ -6,39 +6,6 @@
     {{-- PAGE TITLE --}}
     <h2 class="text-2xl font-bold mb-6">My Dashboard</h2>
 
-    {{-- ============================
-       TODAY'S ATTENDANCE SUMMARY
-       ============================ --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-
-        {{-- Status Card --}}
-        <div class="bg-white shadow p-6 rounded-xl">
-            <h4 class="text-sm font-semibold text-gray-500 mb-1">Today's Status</h4>
-
-            @if(!$todayLog)
-                <p class="text-xl font-bold text-gray-700 mt-2">Not Yet Timed In</p>
-            @else
-                <p class="text-xl font-bold text-green-600 mt-2">Present</p>
-            @endif
-        </div>
-
-        {{-- Time In --}}
-        <div class="bg-white shadow p-6 rounded-xl">
-            <h4 class="text-sm font-semibold text-gray-500 mb-1">Time In</h4>
-            <p class="text-xl font-bold text-blue-600 mt-2">
-                {{ $todayLog->time_in ?? '—' }}
-            </p>
-        </div>
-
-        {{-- Time Out --}}
-        <div class="bg-white shadow p-6 rounded-xl">
-            <h4 class="text-sm font-semibold text-gray-500 mb-1">Time Out</h4>
-            <p class="text-xl font-bold text-purple-600 mt-2">
-                {{ $todayLog->time_out ?? '—' }}
-            </p>
-        </div>
-
-    </div>
 
 
     {{-- ===============================
@@ -57,27 +24,7 @@
                 </div>
             </div>
 
-            {{-- TIME-IN / TIME-OUT BUTTONS --}}
-            <div class="mt-5">
-                @if(!$todayLog)
-                    {{-- TIME IN --}}
-                    <form action="{{ route('attendance.timein', $proj->id) }}" method="POST">
-                        @csrf
-                        <button class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                            Time In
-                        </button>
-                    </form>
 
-                @elseif($todayLog->project_id == $proj->id && !$todayLog->time_out)
-                    {{-- TIME OUT --}}
-                    <form action="{{ route('attendance.timeout', $proj->id) }}" method="POST">
-                        @csrf
-                        <button class="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                            Time Out
-                        </button>
-                    </form>
-                @endif
-            </div>
 
         </div>
 

@@ -115,9 +115,7 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // ========================
-        // KPI DATA
-        // ========================
+        // KPI STATS
         $attendanceCount = \App\Models\Attendance::where('user_id', $user->id)->count();
 
         $hoursWorked = \App\Models\Attendance::where('user_id', $user->id)
@@ -132,28 +130,122 @@ class DashboardController extends Controller
             ->latest('created_at')->first();
         $latestPayrollAmount = $latestPayroll->net_pay ?? 0;
 
-        // ========================
-        // Attendance for today
-        // ========================
-        $hasAttendanceToday = \App\Models\Attendance::where('user_id', $user->id)
-            ->whereDate('created_at', today())
-            ->exists();
-
-        $hasTimeOut = \App\Models\Attendance::where('user_id', $user->id)
-            ->whereDate('created_at', today())
-            ->whereNotNull('time_out')
-            ->exists();
-
         return view('dashboard.employee', compact(
             'activeProjects',
             'activeProjectsCount',
             'attendanceCount',
             'hoursWorked',
             'latestPayroll',
-            'latestPayrollAmount',
-            'hasAttendanceToday',
-            'hasTimeOut'
+            'latestPayrollAmount'
         ));
+    }
+
+    /* ============================================================
+    * PROFILE PAGE
+    * ============================================================ */
+    public function profile()
+    {
+        $user = auth()->user();
+        return view('employee.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'given_name' => 'required|string|max:255',
+            'surname'    => 'required|string|max:255',
+            'email'      => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update($request->only('given_name', 'surname', 'email'));
+
+        return back()->with('success', 'Profile updated successfully!');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'new_password' => 'required|min:6|confirmed'
+        ]);
+
+        auth()->user()->update([
+            'password' => \Hash::make($request->new_password)
+        ]);
+
+        return back()->with('success', 'Password updated successfully!');
+    }
+
+    /* ============================================================
+    * MY ATTENDANCE PAGE (EMPLOYEE ONLY)
+    * ============================================================ */
+    public function attendance()
+    {
+        $user = auth()->user();
+
+        $attendanceLogs = \App\Models\Attendance::with('project')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $projects = $user->projects()->orderBy('created_at', 'desc')->get();
+
+        return view('employee.attendance', compact('attendanceLogs', 'projects'));
+    }
+    /* ============================================================
+    * PROFILE PAGE
+    * ============================================================ */
+    public function profile()
+    {
+        $user = auth()->user();
+        return view('employee.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'given_name' => 'required|string|max:255',
+            'surname'    => 'required|string|max:255',
+            'email'      => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update($request->only('given_name', 'surname', 'email'));
+
+        return back()->with('success', 'Profile updated successfully!');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'new_password' => 'required|min:6|confirmed'
+        ]);
+
+        auth()->user()->update([
+                'password' => \Hash::make($request->new_password)
+            ]);
+
+            return back()->with('success', 'Password updated successfully!');
+        }
+
+        /* ============================================================
+        * MY ATTENDANCE PAGE (EMPLOYEE ONLY)
+        * ============================================================ */
+        public function attendance()
+        {
+            $user = auth()->user();
+
+            $attendanceLogs = \App\Models\Attendance::with('project')
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $projects = $user->projects()->orderBy('created_at', 'desc')->get();
+
+            return view('employee.attendance', compact('attendanceLogs', 'projects'));
+        }
     }
 
 
