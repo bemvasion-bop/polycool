@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: polycool
+    env: docker
+    plan: free
+    repo: https://github.com/yourgithub/polycool
+    branch: main
+
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader
+      php artisan storage:link
+      php artisan config:clear
+      php artisan cache:clear
+      php artisan optimize:clear
+
+    startCommand: |
+      php artisan migrate --force
+      php artisan serve --host 0.0.0.0 --port 10000
+
+    autoDeploy: true
+
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false

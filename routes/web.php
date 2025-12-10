@@ -103,6 +103,8 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
         ->middleware('auth');
 
 
+
+
     // Quotations
     Route::post('/quotations/{quotation}/approve', [QuotationController::class, 'approve'])
         ->name('quotations.approve');
@@ -128,6 +130,10 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
 
     Route::post('/expenses/{expense}/reject', [ExpenseController::class, 'reject'])
         ->name('expenses.reject');
+
+
+    Route::get('/projects/{project}/audit/pdf', [ProjectController::class, 'generateAuditPDF'])
+    ->name('projects.audit.pdf');
 });
 
 
