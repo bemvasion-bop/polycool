@@ -18,9 +18,9 @@ COPY . /var/www/html/
 
 
 #CREATE uploads folder and set permissions
-RUN mkdir -p /var/www/html/public/uploads\
+RUN mkdir -p /var/www/html/public/uploads \
     && chown -R www-data:www-data /var/www/html/public/uploads \
-    && chmod -R 775 /var/html/public/uploads
+    && chmod -R 775 /var/www/html/public/uploads
 
 #Set working dir
 WORKDIR /var/www/html
