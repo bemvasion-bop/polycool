@@ -253,16 +253,16 @@
         @endif
 
         <div class="menu-section">Attendance</div>
-        <a href="{{ route('attendance.manage') }}">
-            <div class="menu-item {{ request()->routeIs('attendance.manage') ? 'menu-active' : '' }}">
-                <i data-lucide="clipboard-list" class="menu-icon"></i> Attendance Manager
-            </div>
-        </a>
-        <a href="{{ route('attendance.scanner') }}">
-            <div class="menu-item {{ request()->routeIs('attendance.scanner') ? 'menu-active' : '' }}">
-                <i data-lucide="scan-line" class="menu-icon"></i> QR Scanner
-            </div>
-        </a>
+        {{-- Attendance Manager + QR Scanner (Owner & Manager only) --}}
+        @if(in_array(auth()->user()->system_role, ['owner','manager']))
+            <li class="{{ request()->routeIs('attendance.index') ? 'active' : '' }}">
+                <a href="{{ route('attendance.index') }}">Attendance Manager</a>
+            </li>
+
+            <li class="{{ request()->routeIs('qrscanner') ? 'active' : '' }}">
+                <a href="{{ route('qrscanner') }}">QR Scanner</a>
+            </li>
+        @endif
 
         {{-- 🌩️ SYNC TO CLOUD BUTTON — OWNER ONLY --}}
         @if(role('owner'))
@@ -275,16 +275,43 @@
         </form>
         @endif
 
-        {{-- EMPLOYEE ONLY: My Profile --}}
-        @if(auth()->user()->system_role == 'owner' || auth()->user()->system_role == 'manager')
-            <a href="{{ route('attendance.manage') }}" class="sidebar-item">
-                Attendance Manager
-            </a>
-        @elseif(auth()->user()->system_role == 'employee')
-            <a href="{{ route('employee.attendance') }}" class="sidebar-item">
+
+
+        {{-- =========================
+            EMPLOYEE SIDEBAR
+        ========================= --}}
+
+            @if(auth()->user()->system_role === 'employee')
+
+            <span class="px-4 text-xs uppercase text-gray-400 tracking-wider mt-6 block">
+                Attendance
+            </span>
+
+            {{-- My Attendance --}}
+            <a href="{{ route('employee.attendance') }}"
+            class="flex gap-3 items-center px-4 py-3 hover:bg-white/20 rounded-xl">
+                <i class="fa-solid fa-calendar-check text-indigo-500"></i>
                 My Attendance
             </a>
+
+            {{-- QR Code --}}
+            <a href="{{ route('attendance.myQR') }}"
+            class="flex gap-3 items-center px-4 py-3 mt-1 hover:bg-white/20 rounded-xl">
+                <i class="fa-solid fa-qrcode text-indigo-500"></i>
+                Show QR Code
+            </a>
+
+            {{-- Profile --}}
+            <a href="{{ route('employee.profile') }}"
+            class="flex gap-3 items-center px-4 py-3 mt-1 hover:bg-white/20 rounded-xl">
+                <i class="fa-solid fa-user-gear text-indigo-500"></i>
+                Profile Settings
+            </a>
+
         @endif
+
+
+
 
 
         {{-- User Info --}}

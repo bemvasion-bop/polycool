@@ -1,80 +1,89 @@
 @extends('layouts.app')
 
+@section('title', 'Audit Dashboard')
+
+@section('page-header')
+    <h1 class="text-3xl font-semibold text-gray-800 tracking-tight">Audit Dashboard</h1>
+@endsection
+
 @section('content')
-<div class="px-10 py-8">
 
-    <h1 class="text-3xl font-semibold mb-6">System Audit Dashboard</h1>
+<style>
+    .glass-card {
+        border-radius: 26px;
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(26px);
+        border: 1px solid rgba(255,255,255,0.45);
+        padding: 28px 32px;
+        box-shadow: 0 20px 55px rgba(0,0,0,0.08);
+    }
+</style>
 
-    {{-- TOP CARDS --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-
-        <div class="bg-white shadow p-6 rounded-lg">
-            <h3 class="text-gray-600">Logs Today</h3>
-            <p class="text-4xl font-bold text-blue-600">{{ $logsToday ?? 0 }}</p>
-        </div>
-
-        <div class="bg-white shadow p-6 rounded-lg">
-            <h3 class="text-gray-600">Flagged Entries</h3>
-            <p class="text-4xl font-bold text-red-600">{{ $flagged ?? 0 }}</p>
-        </div>
-
-        <div class="bg-white shadow p-6 rounded-lg">
-            <h3 class="text-gray-600">Users Monitored</h3>
-            <p class="text-4xl font-bold text-purple-600">{{ $userCount ?? 0 }}</p>
-        </div>
-
+{{-- KPI STATS --}}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Approved Payments</p>
+        <p class="text-3xl font-semibold">{{ $paymentStats['approved'] }}</p>
     </div>
 
-    {{-- ATTENDANCE AUDIT --}}
-    <div class="bg-white shadow p-6 rounded-lg mb-10">
-        <h3 class="text-xl font-semibold mb-4">Recent Attendance Logs</h3>
-
-        <table class="w-full border-collapse">
-            <thead class="bg-gray-100 border-b">
-                <tr>
-                    <th class="p-2 text-left">Employee</th>
-                    <th class="p-2 text-left">Project</th>
-                    <th class="p-2 text-left">Time In</th>
-                    <th class="p-2 text-left">Time Out</th>
-                    <th class="p-2 text-left">Hours</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @forelse($attendanceLogs ?? [] as $log)
-                    <tr class="border-b">
-                        <td class="p-2">{{ $log->user->full_name }}</td>
-                        <td class="p-2">{{ $log->project->project_name }}</td>
-                        <td class="p-2">{{ \Carbon\Carbon::parse($log->time_in)->format('h:i A') }}</td>
-                        <td class="p-2">{{ $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('h:i A') : '-' }}</td>
-                        <td class="p-2">{{ $log->hours_worked ?? '0.00' }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="p-4 text-center text-gray-500">
-                            No logs found.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>  
-
-    {{-- FLAGGED ENTRIES --}}
-    <div class="bg-white shadow p-6 rounded-lg">
-        <h3 class="text-xl font-semibold mb-4">Flagged Items</h3>
-
-        <ul class="space-y-2">
-            @forelse($flaggedItems ?? [] as $flag)
-                <li class="border-b pb-2">
-                    <span class="font-medium text-red-600">{{ $flag->title }}</span>
-                    <span class="float-right text-gray-600">{{ $flag->created_at->format('M d, Y') }}</span>
-                </li>
-            @empty
-                <p class="text-gray-500">No flagged entries.</p>
-            @endforelse
-        </ul>
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Pending Payments</p>
+        <p class="text-3xl font-semibold">{{ $paymentStats['pending'] }}</p>
     </div>
 
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Rejected Payments</p>
+        <p class="text-3xl font-semibold">{{ $paymentStats['rejected'] }}</p>
+    </div>
 </div>
-@endsection 
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Approved Expenses</p>
+        <p class="text-3xl font-semibold">{{ $expenseStats['approved'] }}</p>
+    </div>
+
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Pending Expenses</p>
+        <p class="text-3xl font-semibold">{{ $expenseStats['pending'] }}</p>
+    </div>
+
+    <div class="glass-card">
+        <p class="text-sm text-gray-600 mb-1">Rejected Expenses</p>
+        <p class="text-3xl font-semibold">{{ $expenseStats['rejected'] }}</p>
+    </div>
+</div>
+
+{{-- RECENT SYSTEM LOGS --}}
+<div class="glass-card">
+    <h2 class="text-lg font-semibold mb-4">Recent Audit Logs</h2>
+
+    <table class="w-full text-sm">
+        <thead class="border-b border-gray-300">
+            <tr>
+                <th class="text-left py-2">Action</th>
+                <th class="text-left py-2">Details</th>
+                <th class="text-left py-2">Performed By</th>
+                <th class="text-left py-2">Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($recentLogs as $log)
+            <tr class="border-b border-gray-200">
+                <td class="py-3">{{ $log->action }}</td>
+                <td>{{ $log->details }}</td>
+                <td>{{ $log->user->name ?? '—' }}</td>
+                <td>{{ \Carbon\Carbon::parse($log->created_at)->format('M d, Y | h:i A') }}</td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="4" class="py-4 text-center text-gray-500">
+                    No audit logs yet.
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
+@endsection

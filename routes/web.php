@@ -176,31 +176,30 @@ Route::middleware(['auth', 'role:manager'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'role:employee'])->group(function () {
+
     Route::get('/employee/dashboard', [DashboardController::class, 'employeeDashboard'])
         ->name('employee.dashboard');
 
-    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
-    Route::post('/attendance/time-in/{project}', [AttendanceController::class, 'employeeTimeIn'])->name('attendance.timein');
-    Route::post('/attendance/time-out/{project}', [AttendanceController::class, 'employeeTimeOut'])->name('attendance.timeout');
+    // 🔹 Attendance list for employee
+    Route::get('/employee/attendance', [DashboardController::class, 'employeeAttendance'])
+        ->name('employee.attendance');
 
-    Route::get('/attendance/daily', [AttendanceController::class, 'daily'])->name('attendance.daily');
-    Route::get('/my-qr', [AttendanceController::class, 'myQR'])->name('attendance.myQR');
+    // 🔹 Show QR Code Page
+    Route::get('/employee/attendance/my-qr', [DashboardController::class, 'showMyQR'])
+        ->name('employee.myqr');
 
-    Route::get('/cashadvance/request', [CashAdvanceController::class, 'requestForm'])->name('cashadvance.requestForm');
-    Route::post('/cashadvance/request', [CashAdvanceController::class, 'submitRequest'])->name('cashadvance.submit');
-    Route::get('/cashadvance/my-requests', [CashAdvanceController::class, 'myRequests'])->name('cashadvance.myRequests');
-
-    Route::get('/employee/profile', [EmployeeDashboardController::class, 'profile'])
+    // 🔹 Profile Settings View
+    Route::get('/employee/profile', [DashboardController::class, 'profile'])
         ->name('employee.profile');
 
-    Route::post('/employee/profile/update', [EmployeeDashboardController::class, 'updateProfile'])
+    // 🔹 Update Profile Info
+    Route::post('/employee/profile/update', [DashboardController::class, 'updateProfile'])
         ->name('employee.profile.update');
 
-    Route::post('/employee/profile/password', [EmployeeDashboardController::class, 'updatePassword'])
+    // 🔹 Update Password
+    Route::post('/employee/profile/password', [DashboardController::class, 'updatePassword'])
         ->name('employee.profile.password');
 
-    Route::get('/employee/attendance', [EmployeeDashboardController::class, 'attendance'])
-        ->name('employee.attendance');
 });
 
 

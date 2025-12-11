@@ -1,48 +1,39 @@
-# ==========================================
-# 1️⃣ BASE IMAGE: PHP 8.2 with FPM
-# ==========================================
-FROM php:8.2-fpm
+#Use Official Php with Apache
+FROM php:8.2-apache
 
-# Install required system packages
-RUN apt-get update && apt-get install -y \
-    git curl zip unzip nginx supervisor \
-    libpng-dev libonig-dev libzip-dev libxml2-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip gd
+#Install required Php extensions for Larave
+RUN apt-get update && apt-get install -y \ git unzip libpq-dev zip \ && docket-php-ext-install pdo pdo_mysql pdo_psql zip
 
-# ==========================================
-# 2️⃣ INSTALL COMPOSER
-# ==========================================
+#Enable Apache mod_rewrite (needed for laravel routes)
+RUN a2enmod rewrite
+
+#SET Apache DocumentRoot ot /var/www/html/public
+RUN sed-i 's|var/www/html|/var/www/public/g' /etc/apache2/sites-available/000-defaul.conf\
+    && sed -i 's|var/www/html|public|g' /etc/apache2/apache2.conf
+
+#COPY APP code
+COPY . /var/www/html/
+
+
+#CREATE uploads folder and set permissions
+RUN mkdir -p /var/www/html/public/uploads\ && chown -R www-data:www-data /var/www/html/public/uploads \
+    && chmod -R 775 /var/html/public/uploads
+
+#Set working dir
+WORKDIR /var/www/html
+
+#install composer //changes
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# ==========================================
-# 3️⃣ APP SETUP
-# ==========================================
-WORKDIR /var/www/html
-COPY . .
+#Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-RUN chown -R www-data:www-data storage bootstrap/cache
-RUN chmod -R 775 storage bootstrap/cache
+#SET Permission for laravel storage and cache
+RUN chown -R www-date:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# ==========================================
-# 4️⃣ NGINX CONFIG
-# ==========================================
-COPY ./nginx.conf /etc/nginx/nginx.conf
+#Expose Render's required port
+EXPOSE 10000
 
-# ==========================================
-# 5️⃣ SUPERVISOR CONFIG
-# ==========================================
-COPY .render/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# ==========================================
-# 6️⃣ RUN SUPERVISOR AT STARTUP
-#    ⚠ Clear caches *after* DB exists
-# ==========================================
-CMD bash -c "\
-    php artisan config:clear && \
-    php artisan cache:clear && \
-    php artisan route:clear && \
-    php artisan view:clear && \
-    php artisan optimize:clear && \
-    /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf \
-    "
+# Start Apache
+CMD ["apache2-foreground"]

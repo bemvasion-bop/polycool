@@ -29,10 +29,8 @@
 
 <div class="space-y-10">
 
-
-
     {{-- ============================================================
-        🌈 KPI CARDS — Self-Only Data
+        🌈 KPI CARDS — Employee Spend Summary
     ============================================================ --}}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <div class="glass-card text-center">
@@ -41,7 +39,13 @@
         </div>
         <div class="glass-card text-center">
             <p class="text-sm text-gray-600">Hours Worked (This Week)</p>
-            <h2 class="text-3xl font-bold text-indigo-600">{{ $hoursWorked }}</h2>
+            @php
+                $hours = floor($hoursWorked);
+                $minutes = ($hoursWorked - $hours) * 60;
+            @endphp
+            <h2 class="text-3xl font-bold text-indigo-600">
+                {{ sprintf('%02d:%02d', $hours, $minutes) }}
+            </h2>
         </div>
         <div class="glass-card text-center">
             <p class="text-sm text-gray-600">Active Projects</p>
@@ -57,13 +61,19 @@
 
 
     {{-- ============================================================
-        🧱 CURRENT PROJECTS ASSIGNED
+        🧱 CURRENT PROJECTS
     ============================================================ --}}
     <div class="glass-card p-6">
-        <h3 class="font-semibold text-lg mb-4">Active Projects</h3>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-lg">Active Projects</h3>
+            <a href="{{ route('employee.attendance') }}"
+                class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-sm">
+                View My Attendance →
+            </a>
+        </div>
 
         @if($activeProjects->isEmpty())
-            <p class="text-gray-500 text-sm">No active projects assigned.</p>
+            <p class="text-gray-500 text-sm">No active assigned projects.</p>
         @else
             <table class="w-full text-sm">
                 <thead class="text-gray-500">
@@ -77,10 +87,12 @@
                     @foreach($activeProjects as $project)
                     <tr class="border-b border-gray-200">
                         <td class="py-3">{{ $project->name }}</td>
-                        <td class="text-right">{{ ucfirst($project->status) }}</td>
+                        <td class="text-right capitalize">{{ $project->status }}</td>
                         <td class="text-right">
                             <a href="{{ route('projects.show', $project->id) }}"
-                               class="text-indigo-600 hover:text-indigo-800">View</a>
+                                class="text-indigo-600 hover:text-indigo-800">
+                                View
+                            </a>
                         </td>
                     </tr>
                     @endforeach
@@ -89,16 +101,19 @@
         @endif
     </div>
 
+
     {{-- ============================================================
-        💸 LATEST PAYROLL
+        💸 LATEST PAYSLIP
     ============================================================ --}}
     <div class="glass-card p-6">
         <h3 class="font-semibold text-lg mb-4">Latest Payslip</h3>
 
         @if($latestPayroll)
-            <p>Total Salary: <strong>₱{{ number_format($latestPayrollAmount, 2) }}</strong></p>
+            <p class="text-sm text-gray-700 mb-3">
+                Total: <strong>₱{{ number_format($latestPayrollAmount, 2) }}</strong>
+            </p>
             <a href="{{ route('payroll.show', $latestPayroll->id) }}"
-               class="mt-3 inline-block px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">
+               class="px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-sm">
                View Payslip
             </a>
         @else

@@ -109,13 +109,12 @@ class DashboardController extends Controller
     }
 
     /* ============================================================
-     * EMPLOYEE DASHBOARD
-     * ============================================================ */
+ * EMPLOYEE DASHBOARD (CLEANED)
+ * ============================================================ */
     public function employeeDashboard()
     {
         $user = auth()->user();
 
-        // KPI STATS
         $attendanceCount = \App\Models\Attendance::where('user_id', $user->id)->count();
 
         $hoursWorked = \App\Models\Attendance::where('user_id', $user->id)
@@ -140,13 +139,14 @@ class DashboardController extends Controller
         ));
     }
 
+
     /* ============================================================
     * PROFILE PAGE
     * ============================================================ */
     public function profile()
     {
         $user = auth()->user();
-        return view('employee.profile', compact('user'));
+        return view('employee.profile-settings', compact('user'));
     }
 
     public function updateProfile(Request $request)
@@ -159,7 +159,11 @@ class DashboardController extends Controller
             'email'      => 'required|email|unique:users,email,' . $user->id,
         ]);
 
-        $user->update($request->only('given_name', 'surname', 'email'));
+        $user->update([
+            'given_name' => $request->given_name,
+            'surname'    => $request->surname,
+            'email'      => $request->email,
+        ]);
 
         return back()->with('success', 'Profile updated successfully!');
     }
@@ -177,75 +181,27 @@ class DashboardController extends Controller
         return back()->with('success', 'Password updated successfully!');
     }
 
+
     /* ============================================================
-    * MY ATTENDANCE PAGE (EMPLOYEE ONLY)
+    * MY ATTENDANCE PAGE (EMPLOYEE)
     * ============================================================ */
     public function attendance()
     {
         $user = auth()->user();
 
-        $attendanceLogs = \App\Models\Attendance::with('project')
-            ->where('user_id', $user->id)
+        // Load logs sorted by most recent
+        $logs = \App\Models\Attendance::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $projects = $user->projects()->orderBy('created_at', 'desc')->get();
-
-        return view('employee.attendance', compact('attendanceLogs', 'projects'));
-    }
-    /* ============================================================
-    * PROFILE PAGE
-    * ============================================================ */
-    public function profile()
-    {
-        $user = auth()->user();
-        return view('employee.profile', compact('user'));
+        return view('attendance.index', compact('user', 'logs'));
     }
 
-    public function updateProfile(Request $request)
+    public function myQR()
     {
         $user = auth()->user();
 
-        $request->validate([
-            'given_name' => 'required|string|max:255',
-            'surname'    => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email,' . $user->id,
-        ]);
-
-        $user->update($request->only('given_name', 'surname', 'email'));
-
-        return back()->with('success', 'Profile updated successfully!');
-    }
-
-    public function updatePassword(Request $request)
-    {
-        $request->validate([
-            'new_password' => 'required|min:6|confirmed'
-        ]);
-
-        auth()->user()->update([
-                'password' => \Hash::make($request->new_password)
-            ]);
-
-            return back()->with('success', 'Password updated successfully!');
-        }
-
-        /* ============================================================
-        * MY ATTENDANCE PAGE (EMPLOYEE ONLY)
-        * ============================================================ */
-        public function attendance()
-        {
-            $user = auth()->user();
-
-            $attendanceLogs = \App\Models\Attendance::with('project')
-                ->where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            $projects = $user->projects()->orderBy('created_at', 'desc')->get();
-
-            return view('employee.attendance', compact('attendanceLogs', 'projects'));
-        }
+        return view('attendance.my-qr', compact('user'));
     }
 
 

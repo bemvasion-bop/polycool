@@ -1,90 +1,95 @@
 @extends('layouts.app')
 
+@section('title', 'My Attendance')
+
+@section('page-header')
+<h1 class="text-3xl font-semibold text-gray-900 tracking-tight">
+    My Attendance Logs
+</h1>
+<p class="text-gray-500 mt-1">
+    Track your daily time-in & time-out history.
+</p>
+@endsection
+
 @section('content')
-<div class="p-8">
-    <div class="max-w-3xl mx-auto bg-white shadow rounded-lg p-6">
+<style>
+    .timeline-wrapper {
+        position: relative;
+        margin-left: 32px;
+        padding-left: 18px;
+        border-left: 3px solid rgba(147,112,255,0.40);
+    }
+    .timeline-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #8b5cf6;
+        border: 3px solid white;
+        position: absolute;
+        left: -27px;
+        top: 10px;
+        box-shadow: 0 0 12px rgba(140,120,255,0.6);
+    }
+    .log-card {
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(26px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.45);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+        border-radius: 20px;
+        padding: 20px 24px;
+        transition: .25s;
+    }
+    .log-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0px 0px 20px rgba(140,120,255,0.35);
+    }
+</style>
 
-        <h2 class="text-2xl font-semibold mb-6">My Attendance</h2>
+<div class="space-y-6">
 
-        {{-- TODAY STATUS --}}
-        <div class="bg-gray-100 p-4 rounded mb-6">
-            <h3 class="text-lg font-semibold mb-2">Today</h3>
+    @forelse ($logs as $log)
+    <div class="timeline-wrapper">
 
-            @php
-                $today = $logs->where('date', now()->toDateString())->first();
-            @endphp
+        <div class="timeline-dot"></div>
 
-            <p><strong>Date:</strong> {{ now()->format('M d, Y') }}</p>
+        <div class="log-card">
 
-            @if($today)
-                <p><strong>Time In:</strong> {{ $today->time_in ? \Carbon\Carbon::parse($today->time_in)->format('h:i A') : '—' }}</p>
-                <p><strong>Time Out:</strong> {{ $today->time_out ? \Carbon\Carbon::parse($today->time_out)->format('h:i A') : '—' }}</p>
-                <p><strong>Status:</strong> {{ ucfirst($today->status) }}</p>
-            @else
-                <p>No attendance yet.</p>
-            @endif
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-semibold text-lg text-gray-900">
+                    {{ \Carbon\Carbon::parse($log->date)->format('F d, Y') }}
+                </h3>
 
-            {{-- ACTION BUTTONS --}}
-            <div class="mt-4 flex space-x-4">
+                <span class="text-indigo-600 text-sm font-medium">
+                    {{ $log->project->project_name ?? 'N/A' }}
+                </span>
+            </div>
 
-                {{-- TIME IN --}}
-                @if(!$today || !$today->time_in)
-                    <form action="{{ route('attendance.timein', $activeProjects->first()->id ?? 0) }}" method="POST">
-                        @csrf
-                        <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                            TIME IN
-                        </button>
-                    </form>
-                @endif
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
 
-                {{-- TIME OUT --}}
-                @if($today && $today->time_in && !$today->time_out)
-                    <form action="{{ route('attendance.timeout') }}" method="POST">
-                        @csrf
-                        <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                            TIME OUT
-                        </button>
-                    </form>
-                @endif
+                <p><strong>Time In:</strong><br>
+                    {{ $log->time_in ? \Carbon\Carbon::parse($log->time_in)->format('h:i A') : '—' }}</p>
+
+                <p><strong>Time Out:</strong><br>
+                    {{ $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('h:i A') : '—' }}</p>
+
+                <p><strong>Hours:</strong><br>
+                    {{ $log->hours ?? '—' }}</p>
+
+                <p><strong>Status:</strong><br>
+                    <span class="text-purple-600 font-medium">
+                        {{ ucfirst($log->status) ?? 'Recorded' }}
+                    </span>
+                </p>
 
             </div>
+
         </div>
-
-        {{-- HISTORY TABLE --}}
-        <h3 class="text-xl font-semibold mb-4">Attendance History</h3>
-
-        <table class="w-full border text-left">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="p-2 border">Date</th>
-                    <th class="p-2 border">Time In</th>
-                    <th class="p-2 border">Time Out</th>
-                    <th class="p-2 border">Hours Worked</th>
-                    <th class="p-2 border">Status</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @foreach($logs as $log)
-                    <tr>
-                        <td class="p-2 border">{{ $log->date }}</td>
-
-                        <td class="p-2 border">
-                            {{ $log->time_in ? \Carbon\Carbon::parse($log->time_in)->format('h:i A') : '—' }}
-                        </td>
-
-                        <td class="p-2 border">
-                            {{ $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('h:i A') : '—' }}
-                        </td>
-
-                        <td class="p-2 border">{{ number_format($log->hours_worked, 2) }}</td>
-
-                        <td class="p-2 border">{{ ucfirst($log->status) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
     </div>
+    @empty
+    <p class="text-gray-500 text-center mt-10">
+        No attendance records yet.
+    </p>
+    @endforelse
+
 </div>
 @endsection
