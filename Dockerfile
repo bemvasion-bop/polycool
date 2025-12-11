@@ -28,6 +28,7 @@ WORKDIR /var/www/html
 #install composer //changes
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+
 #Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader
 
