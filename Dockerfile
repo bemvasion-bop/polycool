@@ -12,46 +12,51 @@ COPY . .
 RUN npm run build
 
 
-# Use official PHP with Apache
+# ============================================================
+# 2️⃣ STAGE 2 — PHP + APACHE SERVER
+# ============================================================
 FROM php:8.2-apache
 
-# Install required PHP extensions
-RUN apt-get update && apt-get install -y \
-    git unzip libpg-dev libzip-dev zip \
-    && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip
+# Update first (separate line — required by Debian Trixie)
+RUN apt-get update
+
+# Install PHP extensions needed by Laravel
+RUN apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libpq-dev \
+    sqlite3 \
+    libsqlite3-dev \
+    && docker-php-ext-install pdo_mysql pdo_pgsql zip gd
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-#Set Apache DocumentRoot to /var/www/html/public (laravel entry point)
+# Fix DocumentRoot to /public
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i 's|/var/www.html|/var/www/html/public|g' /etc/apache2/apache2.conf
+    && sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/apache2.conf
 
-
-# Copy application code
+# Copy Laravel app code
 COPY . /var/www/html/
 
+# Copy built Vite assets
+COPY --from=node_builder /app/public/build /var/www/html/public/build
 
-#Create uploads folder and set permissions
-RUN mkdir -p /var/wwww/html/public/uploads \
-    && chown -R www-data:www-data /var/wwww/html/public/uploads \
-    && chmod -R 775 /var/www/html/public/uploads
-
-
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy composer binary
+# Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-#Set permissions for laravel storage
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose Render port
+# Expose port for Render
 EXPOSE 10000
 
-# Start Apache
 CMD ["apache2-foreground"]
