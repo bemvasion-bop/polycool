@@ -1,45 +1,36 @@
-#Use Official Php with Apache
+# Use official PHP with Apache
 FROM php:8.2-apache
 
-#Install required Php extensions for Larave
+# Install required PHP extensions
 RUN apt-get update && apt-get install -y \
-    git unzip libpq-dev libzip-dev zip \
-    && docker-php-ext-install pdo_mysql pdo_pgsql zip
+    git unzip libpq-dev libzip-dev zip libpng-dev libonig-dev sqlite3 libsqlite3-dev \
+    && docker-php-ext-install pdo_mysql pdo_pgsql gd zip
 
-#Enable Apache mod_rewrite (needed for laravel routes)
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-#SET Apache DocumentRoot ot /var/www/html/public
-RUN sed -i 's|/var/www/html|/var/www/public|g' /etc/apache2/sites-available/000-default.conf\
-    && sed -i 's|var/www/html|public|g' /etc/apache2/apache2.conf
+# Fix document root for Laravel
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf \
+    && sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/apache2.conf
 
-#COPY APP code
+# Copy application code
 COPY . /var/www/html/
 
-
-#CREATE uploads folder and set permissions
-RUN mkdir -p /var/www/html/public/uploads \
-    && chown -R www-data:www-data /var/www/html/public/uploads \
-    && chmod -R 775 /var/www/html/public/uploads
-
-#Set working dir
+# Set working directory
 WORKDIR /var/www/html
 
-#install composer //changes
+# Copy composer binary
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Install Laravel dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-#Install Laravel dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-#SET Permission for laravel storage and cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-#Expose Render's required port
+# Expose Render port
 EXPOSE 10000
-
 
 # Start Apache
 CMD ["apache2-foreground"]
-
-
