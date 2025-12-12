@@ -1,3 +1,17 @@
+# ============================================================
+# 1️⃣ STAGE 1 — BUILD VITE ASSETS WITH NODE
+# ============================================================
+FROM node:18 AS node_builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+
 # Use official PHP with Apache
 FROM php:8.2-apache
 
