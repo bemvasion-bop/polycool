@@ -1,94 +1,148 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="px-10 py-8 max-w-4xl mx-auto">
 
-    <h2 class="text-2xl font-semibold mb-6">Payroll Preview</h2>
+<style>
+.payslip-wrapper {
+    max-width: 900px;
+    margin: auto;
+    background: #fff;
+    padding: 40px 50px;
+    border-radius: 16px;
+    box-shadow: 0 20px 55px rgba(0,0,0,0.08);
+    font-size: 14px;
+}
 
-    <div class="bg-white shadow rounded-lg p-6">
+.payslip-header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 16px;
+}
 
-        <div class="border-b pb-4 flex justify-between">
-            <div>
-                <h3 class="font-semibold text-xl">Polycool Spray Foam Services</h3>
-                <p>Salary Slip</p>
+.payslip-title {
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 6px;
+    margin: 24px 0 30px;
+}
 
-                <p class="mt-2">
-                    <strong>Employee:</strong> 
-                    {{ $slip['employee']->given_name }} {{ $slip['employee']->last_name }}
-                </p>
-            </div>
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
 
-            <div class="text-right">
-                <p><strong>Period:</strong></p>
-                <p>{{ $start->format('M d, Y') }} – {{ $end->format('M d, Y') }}</p>
-            </div>
+.section {
+    margin-top: 28px;
+}
+
+.section h4 {
+    font-weight: 600;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 6px;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+
+.total {
+    border-top: 1px solid #000;
+    margin-top: 8px;
+    padding-top: 6px;
+    font-weight: 600;
+}
+
+.net-pay {
+    margin-top: 30px;
+    padding: 14px;
+    background: #ecfdf5;
+    color: #065f46;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: right;
+    border-radius: 10px;
+}
+</style>
+
+<div class="payslip-wrapper">
+
+    {{-- HEADER --}}
+    <div class="payslip-header">
+        <div>
+            <h3 class="text-lg font-semibold">Polycool Spray Foam Services</h3>
+            <p class="text-gray-500">Payroll Slip (Preview)</p>
+
+            <p class="mt-3">
+                <strong>Employee:</strong>
+                {{ $slip['employee']->given_name }} {{ $slip['employee']->last_name }}
+            </p>
         </div>
 
-        {{-- Earnings Section --}}
-        <div class="mt-6">
-            <h4 class="font-semibold mb-2">Earnings</h4>
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="p-2">Description</th>
-                        <th class="p-2">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="border-b">
-                        <td class="p-2">Gross Earnings</td>
-                        <td class="p-2">₱{{ number_format($slip['gross_pay'], 2) }}</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="text-right">
+            <p><strong>Payroll Period</strong></p>
+            <p>{{ $start->format('M d, Y') }} – {{ $end->format('M d, Y') }}</p>
         </div>
-
-        {{-- Deductions --}}
-        <div class="mt-6">
-            <h4 class="font-semibold mb-2">Deductions</h4>
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="p-2">Description</th>
-                        <th class="p-2">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="border-b">
-                        <td class="p-2">Cash Advance</td>
-                        <td class="p-2">₱{{ number_format($slip['cash_advance'], 2) }}</td>
-                    </tr>
-                    <tr class="border-b bg-gray-50">
-                        <td class="p-2 font-semibold">Total Deductions</td>
-                        <td class="p-2 font-semibold">₱{{ number_format($slip['cash_advance'], 2) }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Net Pay --}}
-        <div class="mt-6 p-4 bg-green-100 text-green-800 rounded text-center text-xl font-semibold">
-            Net Pay for this period: ₱{{ number_format($slip['net_pay'], 2) }}
-        </div>
-
-        {{-- Confirm Button --}}
-        <form action="{{ route('payroll.generate') }}" method="POST" class="mt-6">
-            @csrf
-            <input type="hidden" name="employee_id" value="{{ $slip['employee']->id }}">
-            <input type="hidden" name="start_date" value="{{ $start->toDateString() }}">
-            <input type="hidden" name="end_date" value="{{ $end->toDateString() }}">
-
-            <button class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                Generate Final Payroll
-            </button>
-
-            <a href="{{ route('payroll.create') }}"
-               class="ml-4 text-gray-600 hover:underline">
-                Cancel
-            </a>
-        </form>
-
     </div>
 
+    <div class="payslip-title">PAYSLIP</div>
+
+    {{-- EARNINGS --}}
+    <div class="section">
+        <h4>EARNINGS</h4>
+
+        <div class="row">
+            <span>Gross Earnings</span>
+            <span>₱ {{ number_format($slip['gross_pay'], 2) }}</span>
+        </div>
+
+        <div class="row total">
+            <span>Total Earnings</span>
+            <span>₱ {{ number_format($slip['gross_pay'], 2) }}</span>
+        </div>
+    </div>
+
+    {{-- DEDUCTIONS --}}
+    <div class="section">
+        <h4>DEDUCTIONS</h4>
+
+        <div class="row">
+            <span>Cash Advance</span>
+            <span>₱ {{ number_format($slip['cash_advance'], 2) }}</span>
+        </div>
+
+        <div class="row total">
+            <span>Total Deductions</span>
+            <span>₱ {{ number_format($slip['cash_advance'], 2) }}</span>
+        </div>
+    </div>
+
+    {{-- NET PAY --}}
+    <div class="net-pay">
+        NET PAY: ₱ {{ number_format($slip['net_pay'], 2) }}
+    </div>
+
+    {{-- ACTIONS --}}
+    <form action="{{ route('payroll.generate') }}" method="POST" class="mt-8 text-right">
+        @csrf
+        <input type="hidden" name="employee_id" value="{{ $slip['employee']->id }}">
+        <input type="hidden" name="start_date" value="{{ $start->toDateString() }}">
+        <input type="hidden" name="end_date" value="{{ $end->toDateString() }}">
+
+        <button class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+            Generate Final Payroll
+        </button>
+
+        <a href="{{ route('payroll.create') }}"
+           class="ml-4 text-gray-600 hover:underline">
+            Cancel
+        </a>
+    </form>
+
 </div>
+
 @endsection

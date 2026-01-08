@@ -83,6 +83,18 @@
                 @case('delayed')   <span class="px-3 py-1 bg-red-500 text-white rounded">Delayed</span> @break
                 @case('completed') <span class="px-3 py-1 bg-green-600 text-white rounded">Completed</span> @break
             @endswitch
+
+            @if($project->is_fully_paid)
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700">
+                    ✔ Fully Paid
+                </span>
+            @else
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-700">
+                    ⏳ With Balance
+                </span>
+            @endif
+
+
         </div>
 
         <hr class="my-4">
@@ -414,13 +426,15 @@
             </p>
 
 
-            {{-- PRINT PAYMENT SUMMARY PDF BUTTON --}}
+            {{-- PRINT PAYMENT SUMMARY PDF BUTTON
             <div class="mt-4">
                 <a href="{{ route('payments.summary.pdf', $project->id) }}"
                 class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-black transition">
                 Print Payment Summary PDF
                 </a>
             </div>
+
+            --}}
 
         </div>
 
@@ -435,7 +449,7 @@
             <h3 class="text-xl font-semibold">Payments</h3>
 
             {{-- Only MANAGER can add payments --}}
-            @if(auth()->user()->system_role === 'manager')
+            @if(in_array(auth()->user()->system_role, ['manager','owner']))
                 <button
                     onclick="document.getElementById('addPaymentModal').classList.remove('hidden')"
                     class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
@@ -473,13 +487,13 @@
 
                         {{-- Status --}}
                         <td class="p-3 border">
-                            @if($payment->status === 'pending')
+                            @if($payment->status === 'approved')
                                 <span class="text-green-600 font-medium">Approved</span>
                             @elseif($payment->status === 'pending')
                                 <span class="text-yellow-600 font-medium">Pending</span>
                             @elseif($payment->status === 'rejected')
                                 <span class="text-red-600 font-medium">Rejected</span>
-                            @elseif($payment->status === 'reissued')
+                            @elseif(in_array($payment->status, ['reissued','reversed']))
                                 <span class="text-red-700 font-medium">Reversed</span>
                             @else
                                 <span class="text-gray-500 italic">Downpayment</span>
@@ -500,11 +514,11 @@
                         <td class="p-3 border text-sm text-gray-700">
                             {{-- 1) If this payment was re-issued, show the manager who corrected it --}}
                             @if($payment->corrected_by && $payment->correctedBy)
-                                {{ $payment->correctedBy->given_name  }}
+                                {{ $payment->correctedBy->user->given_name ?? 'System'}}
 
                             {{-- 2) Else if it has an added_by (manual entry by owner/accounting) --}}
                             @elseif($payment->added_by && $payment->addedBy)
-                                {{ $payment->addedBy->given_name  }}
+                                {{ $payment->addedBy->user->given_name ?? 'System' }}
 
 
                             {{-- 3) Else if this is the quotation downpayment (auto-imported) --}}
@@ -812,7 +826,7 @@
 
                             {{-- TYPE --}}
                             <td class="p-3 border">
-                                @if($expense->material_id)
+                                @if($expense->expense_type === 'material')
                                     <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                                         Material
                                     </span>
@@ -825,7 +839,7 @@
 
                             {{-- DETAILS --}}
                             <td class="p-3 border">
-                                @if($expense->material_id)
+                                @if($expense->expense_type === 'material')
                                     <p class="font-medium">{{ $expense->material->name }}</p>
                                     <p class="text-sm text-gray-600">
                                         Supplier: {{ $expense->material->supplier->name }}
@@ -856,7 +870,7 @@
 
                             {{-- COST CALC --}}
                             <td class="p-3 border">
-                                @if($expense->material_id)
+                                @if($expense->expense_type === 'material')
                                     ₱{{ number_format($expense->total_cost, 2) }}
                                 @else
                                     ₱{{ number_format($expense->amount, 2) }}
@@ -915,7 +929,7 @@
                                 <td class="px-3 py-1 text-sm text-center">
 
                                     {{-- MATERIAL EXPENSES --}}
-                                    @if($expense->material_id)
+                                    @if($expense->expense_type === 'material')
 
                                         {{-- Manager can correct ONLY if reversed --}}
                                         @if(auth()->user()->system_role === 'manager'
@@ -1043,17 +1057,22 @@
                                 class="absolute left-0 right-0 bg-white border rounded-lg shadow max-h-48 overflow-y-auto hidden z-50">
 
                                 @foreach($materials as $m)
-                                    <div class="px-3 py-2 cursor-pointer hover:bg-purple-100 material-item"
+                                    <div class="material-item px-3 py-2 cursor-pointer hover:bg-purple-100"
                                         data-id="{{ $m->id }}"
                                         data-name="{{ $m->name }}"
                                         data-price="{{ $m->price_per_unit }}"
                                         data-supplier="{{ $m->supplier->name }}"
                                         onclick="selectMaterial(this)">
-                                        <strong>{{ $m->name }}</strong>
-                                        <div class="text-xs text-gray-600">
-                                            ₱{{ number_format($m->price_per_unit, 2) }} — {{ $m->supplier->name }}
+
+                                        <div class="font-medium text-gray-900">
+                                            {{ $m->name }}
+                                        </div>
+
+                                        <div class="text-xs text-gray-500">
+                                            {{ $m->supplier->name }}
                                         </div>
                                     </div>
+
                                 @endforeach
 
                             </div>
@@ -1122,52 +1141,112 @@
 
 
         <script>
-        document.getElementById('expenseType').addEventListener('change', function () {
-            const type = this.value;
-            const mat = document.getElementById('materialFields');
-            const custom = document.getElementById('customFields');
+            // ================================
+            // GLOBAL FLAG (important)
+            // ================================
+            let isSelectingMaterial = false;
 
-            if (type === 'material') {
-                mat.classList.remove('hidden');
-                custom.classList.add('hidden');
-            } else {
-                mat.classList.add('hidden');
-                custom.classList.remove('hidden');
-            }
-        });
+            // ================================
+            // ELEMENT REFERENCES
+            // ================================
+            const materialSearch   = document.getElementById('materialSearch');
+            const materialIdInput  = document.getElementById('material_id');
+            const unitPriceInput   = document.getElementById('unitPrice');
+            const totalCostInput   = document.getElementById('totalCost');
+            const materialList     = document.getElementById('materialList');
+            const quantityInput    = document.getElementById('quantity');
 
-        function showMaterialList() {
-            document.getElementById('materialList').classList.remove('hidden');
-        }
+            // ================================
+            // EXPENSE TYPE TOGGLE
+            // ================================
+            document.getElementById('expenseType').addEventListener('change', function () {
+                const type   = this.value;
+                const mat    = document.getElementById('materialFields');
+                const custom = document.getElementById('customFields');
 
-        function filterMaterials() {
-            let query = document.getElementById('materialSearch').value.toLowerCase();
-            document.querySelectorAll('.material-item').forEach(item => {
-                let name = item.dataset.name.toLowerCase();
-                item.style.display = name.includes(query) ? 'block' : 'none';
+                if (type === 'material') {
+                    mat.classList.remove('hidden');
+                    custom.classList.add('hidden');
+                } else {
+                    mat.classList.add('hidden');
+                    custom.classList.remove('hidden');
+                }
             });
-        }
 
-        function selectMaterial(el) {
-            document.getElementById('material_id').value = el.dataset.id;
-            document.getElementById('materialSearch').value = el.dataset.name;
-            document.getElementById('unitPrice').value = "₱" + parseFloat(el.dataset.price).toFixed(2);
-            updateTotalCost();
-            document.getElementById('materialList').classList.add('hidden');
-        }
-
-        function updateTotalCost() {
-            let price = parseFloat(document.getElementById('unitPrice').value.replace('₱', '')) || 0;
-            let qty = parseFloat(document.getElementById('quantity').value) || 0;
-            document.getElementById('totalCost').value = "₱" + (price * qty).toFixed(2);
-        }
-
-        document.addEventListener('click', function(e) {
-            if (!document.getElementById('materialFields').contains(e.target)) {
-                document.getElementById('materialList').classList.add('hidden');
+            // ================================
+            // SHOW MATERIAL LIST
+            // ================================
+            function showMaterialList() {
+                materialList.classList.remove('hidden');
             }
-        });
+
+            // ================================
+            // FILTER MATERIALS (SEARCH ONLY)
+            // ================================
+            function filterMaterials() {
+                const query = materialSearch.value.toLowerCase();
+
+                document.querySelectorAll('.material-item').forEach(item => {
+                    const name = item.dataset.name.toLowerCase();
+                    item.style.display = name.includes(query) ? 'block' : 'none';
+                });
+            }
+
+            // ================================
+            // SELECT MATERIAL (CORE FIX)
+            // ================================
+            function selectMaterial(el) {
+                isSelectingMaterial = true;
+
+                const price = parseFloat(el.dataset.price) || 0;
+
+                materialIdInput.value = el.dataset.id;
+                materialSearch.value  = el.dataset.name;
+                unitPriceInput.value  = '₱' + price.toFixed(2);
+
+                updateTotalCost();
+
+                materialList.classList.add('hidden');
+
+                // allow input listener again AFTER selection
+                setTimeout(() => {
+                    isSelectingMaterial = false;
+                }, 0);
+            }
+
+            // ================================
+            // UPDATE TOTAL COST
+            // ================================
+            function updateTotalCost() {
+                const price = parseFloat(unitPriceInput.value.replace('₱', '')) || 0;
+                const qty   = parseFloat(quantityInput.value) || 0;
+
+                totalCostInput.value = '₱' + (price * qty).toFixed(2);
+            }
+
+            // ================================
+            // RESET PRICE WHEN USER TYPES (NOT SELECTING)
+            // ================================
+            materialSearch.addEventListener('input', () => {
+                if (isSelectingMaterial) return;
+
+                materialIdInput.value = '';
+                unitPriceInput.value  = '₱0.00';
+                totalCostInput.value  = '₱0.00';
+
+                filterMaterials();
+            });
+
+            // ================================
+            // CLOSE MATERIAL LIST WHEN CLICK OUTSIDE
+            // ================================
+            document.addEventListener('click', function(e) {
+                if (!document.getElementById('materialFields').contains(e.target)) {
+                    materialList.classList.add('hidden');
+                }
+            });
         </script>
+
 
 
 

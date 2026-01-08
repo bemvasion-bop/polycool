@@ -7,24 +7,31 @@ use Illuminate\Database\Eloquent\Model;
 
 class Expense extends Model
 {
+
+    public const STATUS_PENDING           = 'pending';
+    public const STATUS_APPROVED          = 'approved';
+    public const STATUS_REJECTED          = 'rejected';
+    public const STATUS_REVERSED          = 'reversed';
+    public const STATUS_REISSUE_REQUESTED = 'reissue_requested';
+    public const STATUS_REISSUED          = 'reissued';
+
     use HasFactory;
 
     protected $fillable = [
         'project_id',
         'user_id',
+        'expense_type',
         'material_id',
-        'category',
-        'amount',
+        'supplier_id',
+        'unit_cost',
+        'quantity_used',
         'total_cost',
-        'status',
-        'processed_by',
-        'processed_reason',
-        'is_reversal',
-        'original_amount',
-        'corrected_by',
-        'correction_reason',
+        'amount',
+        'category',
         'expense_date',
-        'description'
+        'description',
+        'status',
+        'receipt_path',
     ];
 
 

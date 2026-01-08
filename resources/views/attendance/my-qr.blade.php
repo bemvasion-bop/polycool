@@ -3,7 +3,8 @@
 @section('content')
 <div class="flex justify-center items-center h-full">
 
-    <div class="bg-white p-10 rounded-xl shadow-lg w-full max-w-md text-center">
+        <div class="bg-white p-6 sm:p-10 rounded-xl shadow-lg w-full max-w-md text-center">
+
 
         <h2 class="text-2xl font-bold mb-4">My QR Code</h2>
 
@@ -24,12 +25,12 @@
             </p>
         </div>
 
-       
+
         {{-- QR CODE --}}
         <div class="flex justify-center mb-6">
-            
+
             @if($user->system_role === 'employee')
-            {!! QrCode::size(230)->generate($user->qr_code) !!}
+                {!! QrCode::size(180)->generate($user->qr_code) !!}
             @else
                 <p class="text-gray-500">QR Code not available for this role.</p>
             @endif
@@ -42,7 +43,7 @@
             </span>
         </p>
 
-       
+
 
         {{-- DOWNLOAD BUTTON (SVG — FIXED) --}}
         <a href="data:image/svg+xml;base64,{{ base64_encode(QrCode::size(300)->generate($user->qr_code)) }}"
@@ -54,4 +55,4 @@
     </div>
 
 </div>
-@endsection 
+@endsection

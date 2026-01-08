@@ -32,4 +32,10 @@ class PayrollRun extends Model
     {
         return $this->belongsTo(User::class, 'finalized_by');
     }
+
+
+    public function employees()
+    {
+        return $this->hasMany(PayrollEmployee::class);
+    }
 }

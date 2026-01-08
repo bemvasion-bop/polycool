@@ -29,7 +29,7 @@ class ExpenseController extends Controller
     /* ============================================================
      *  STORE EXPENSE
      * ============================================================ */
-    public function store(Request $request, Expense $expense)
+    public function store(Request $request)
     {
         // =======================
         // 1️⃣ VALIDATION RULES
@@ -38,11 +38,11 @@ class ExpenseController extends Controller
             'project_id'    => 'required|exists:projects,id',
             'expense_type'  => 'required|in:material,custom',
 
-            // If MATERIAL expense
+            // MATERIAL
             'material_id'   => 'required_if:expense_type,material|nullable|exists:materials,id',
             'quantity_used' => 'required_if:expense_type,material|nullable|numeric|min:0.01',
 
-            // If CUSTOM expense
+            // CUSTOM
             'category'      => 'required_if:expense_type,custom|string|nullable',
             'amount'        => 'required_if:expense_type,custom|nullable|numeric|min:0.01',
 
@@ -51,46 +51,86 @@ class ExpenseController extends Controller
             'receipt'       => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
-        // ⛔ Guarantee: expense_type is lower-case
-        $type = strtolower($request->expense_type);
-
+        // =======================
+        // 2️⃣ BASE EXPENSE DATA
+        // =======================
         $expense = new Expense();
-        $expense->project_id = $request->project_id;
-        $expense->user_id = auth()->id();
+        $expense->project_id   = $request->project_id;
+        $expense->user_id      = auth()->id();
         $expense->expense_date = $request->expense_date;
-        $expense->status = 'pending';
+        $expense->status       = 'pending';
+        $expense->description  = $request->description;
 
+        // =======================
+        // 3️⃣ MATERIAL EXPENSE
+        // =======================
         if ($request->expense_type === 'material') {
-            $material = Material::find($request->material_id);
 
+            $material = Material::findOrFail($request->material_id);
+
+            $unitCost = $material->price_per_unit;
+            $qty      = $request->quantity_used;
+            $total    = $unitCost * $qty;
+
+            $expense->expense_type  = 'material';
             $expense->material_id   = $material->id;
             $expense->supplier_id   = $material->supplier_id;
-            $expense->unit_cost     = $material->unit_cost;
-            $expense->quantity_used = $request->quantity_used;
+            $expense->unit_cost     = $unitCost;
+            $expense->quantity_used = $qty;
+            $expense->total_cost    = $total;
+            $expense->amount        = $total;
 
-            $expense->total_cost    = $material->unit_cost * $request->quantity_used;
-            $expense->amount        = $expense->total_cost;
+            // =======================
+            // 🔎 LEVEL 2 AUDIT
+            // =======================
+            $auditDetails =
+                'Material Expense Added | ' .
+                'Material: ' . $material->name .
+                ' | Unit Cost: ₱' . number_format($unitCost, 2) .
+                ' | Qty: ' . $qty .
+                ' | Total: ₱' . number_format($total, 2) .
+                ' | Project ID: ' . $expense->project_id;
 
-        } else {
-            // Custom Expense
+        }
+
+        // =======================
+        // 4️⃣ CUSTOM EXPENSE
+        // =======================
+        else {
+
+            $expense->expense_type  = 'custom';
             $expense->material_id   = null;
             $expense->supplier_id   = null;
-            $expense->quantity_used = null;
             $expense->unit_cost     = null;
+            $expense->quantity_used = null;
             $expense->total_cost    = $request->amount;
             $expense->amount        = $request->amount;
             $expense->category      = $request->category;
+
+            // =======================
+            // 🔎 LEVEL 2 AUDIT
+            // =======================
+            $auditDetails =
+                'Custom Expense Added | ' .
+                'Category: ' . $request->category .
+                ' | Amount: ₱' . number_format($request->amount, 2) .
+                ' | Project ID: ' . $expense->project_id;
         }
 
+        // =======================
+        // 5️⃣ RECEIPT UPLOAD
+        // =======================
         if ($request->hasFile('receipt')) {
             $expense->receipt_path = $request->file('receipt')->store('receipts', 'public');
         }
 
-        $expense->description = $request->description;
         $expense->save();
 
-        return back()->with('success','Expense added successfully!');
+
+
+        return back()->with('success', 'Expense added successfully!');
     }
+
 
 
 
@@ -187,21 +227,29 @@ class ExpenseController extends Controller
     }
     public function approve(Expense $expense)
     {
-        if (!in_array(auth()->user()->system_role, ['owner','accounting'])) {
+        if (!in_array(auth()->user()->system_role, ['owner', 'accounting'])) {
             abort(403);
         }
 
-        $expense->status = 'approved';
-        $expense->processed_by = auth()->id();
-        $expense->processed_reason = 'Approved by '.auth()->user()->given_name;
-        $expense->save();
+        if ($expense->status !== Expense::STATUS_PENDING) {
+            return back()->with('error', 'Only pending expenses can be approved.');
+        }
 
-        return back()->with('success', 'Expense approved successfully.');
+        $expense->update([
+            'status'           => Expense::STATUS_APPROVED,
+            'processed_by'     => auth()->id(),
+            'processed_reason' => 'Approved by ' . auth()->user()->given_name,
+        ]);
+
+        audit_log('Expense Approved', 'Expense ID '.$expense->id);
+
+        return back()->with('success', 'Expense approved.');
     }
+
 
     public function saveReIssue(Request $request, Expense $expense)
     {
-        if (auth()->user()->system_role !== 'manager') {
+        if (!in_array(auth()->user()->system_role, ['manager', 'owner'])) {
             abort(403);
         }
 
@@ -234,18 +282,52 @@ class ExpenseController extends Controller
 
     public function reject(Expense $expense)
     {
-        if (!in_array(auth()->user()->system_role, ['owner','accounting'])) {
+        if (!in_array(auth()->user()->system_role, ['owner', 'accounting'])) {
             abort(403);
         }
 
-        $expense->status = 'cancelled'; // or rejected if you want
-        $expense->processed_by = auth()->id();
-        $expense->processed_reason = 'Rejected by '.auth()->user()->given_name;
-        $expense->save();
+        if ($expense->status !== Expense::STATUS_PENDING) {
+            return back()->with('error', 'Only pending expenses can be rejected.');
+        }
+
+        $expense->update([
+            'status'           => Expense::STATUS_REJECTED,
+            'processed_by'     => auth()->id(),
+            'processed_reason' => 'Rejected by ' . auth()->user()->given_name,
+        ]);
+
+        audit_log('Expense Rejected', 'Expense ID '.$expense->id);
 
         return back()->with('success', 'Expense rejected.');
     }
 
+
+    public function requestReissue(Request $request, Expense $expense)
+    {
+        // Owner + Accounting only
+        if (!in_array(auth()->user()->system_role, ['owner', 'accounting'])) {
+            abort(403);
+        }
+
+        // Only pending expenses can be requested for re-issue
+        if ($expense->status !== Expense::STATUS_PENDING) {
+            return back()->with('error', 'Only pending expenses can be requested for re-issue.');
+        }
+
+        $request->validate([
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $expense->update([
+            'status'           => Expense::STATUS_REISSUE_REQUESTED,
+            'processed_by'     => auth()->id(),
+            'processed_reason' => 'Re-issue requested: ' . $request->reason,
+        ]);
+
+        // ❌ NO AUDIT LOG HERE (request only)
+
+        return back()->with('success', 'Re-issue request sent successfully.');
+    }
 
    public function adjustMaterialQuantity(Request $request, Expense $expense)
     {

@@ -66,7 +66,7 @@
     <div class="glass-card p-6">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold text-lg">Active Projects</h3>
-            <a href="{{ route('employee.attendance') }}"
+            <a href="{{ route('attendance.index') }}"
                 class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-sm">
                 View My Attendance →
             </a>

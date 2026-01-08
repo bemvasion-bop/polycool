@@ -37,33 +37,65 @@ class ProjectController extends Controller
     {
         $project->load([
             'client',
+            'quotation',
             'expenses.user',
-            'payments.submitter',
+            'expenses.material.supplier',
+            'payments.addedBy.user',
+            'payments.correctedBy.user',
             'users',
             'extraWorks.addedBy',
         ]);
 
-
         $materials = Material::with('supplier')->orderBy('name')->get();
-
 
         // Weather
         $weatherData = null;
-            if (!empty($project->location)) {
-                $weatherData = $weatherService->getForecast($project->location);
-            }
+        if (!empty($project->location)) {
+            $weatherData = $weatherService->getForecast($project->location);
+        }
+
+        // Progress (view-only)
         $project->progress = $project->calculateProgress();
 
-        // Financials
-        $basePrice         = $project->base_contract_price;
-        $extraWorkTotal    = $project->extra_work_total;
-        $totalProjectPrice = $project->total_price ?? 0;
+        // ===============================
+        // AUTO-IMPORT QUOTATION DOWNPAYMENT (IDEMPOTENT)
+        // ===============================
+        $quotation = $project->quotation;
+        $downpayment = (float) ($quotation->downpayment_amount ?? 0);
 
-        $totalPaid = $project->payments()
-            ->where('status', 'approved')
-            ->sum('amount');
+        if ($quotation && $downpayment > 0) {
+            $project->payments()->updateOrCreate(
+                [
+                    'project_id' => $project->id,
+                    'notes'      => 'Auto-imported from quotation downpayment',
+                ],
+                [
+                    'amount'         => $downpayment,
+                    'payment_method' => $quotation->downpayment_method ?? 'cash',
+                    'status'         => 'approved',
+                    'payment_date'   => $quotation->downpayment_date ?? $quotation->created_at,
+                    'added_by'       => null,
+                    'corrected_by'   => null,
+                ]
+            );
+        }
 
-        // Expense Financials — Only APPROVED counted
+        // ===============================
+        // FINANCIALS (SINGLE SOURCE OF TRUTH)
+        // ===============================
+        $baseContract = $quotation->contract_price ?? 0;
+        $extraTotal   = $project->approvedExtraWorks()->sum('amount');
+        $totalProject = $baseContract + $extraTotal;
+
+        $totalPaid = $project->approvedPayments()->sum('amount');
+        $remainingBalance = $totalProject - $totalPaid;
+
+        // ✅ Paid indicator only (NO DB UPDATE)
+        $isFullyPaid = $remainingBalance <= 0;
+
+        // ===============================
+        // EXPENSES (APPROVED ONLY)
+        // ===============================
         $totalApprovedMaterial = $project->expenses()
             ->where('status', 'approved')
             ->whereNotNull('material_id')
@@ -75,44 +107,29 @@ class ProjectController extends Controller
             ->sum('amount');
 
         $totalApprovedExpenses = $totalApprovedMaterial + $totalApprovedCustom;
+        $remainingAfterExpenses = $totalProject - $totalApprovedExpenses;
 
-        $remainingAfterExpenses = ($totalProjectPrice ?? 0) - $totalApprovedExpenses;
-
-        $remainingBalance = ($totalProjectPrice ?? 0) - $totalPaid;
-
+        // Lists
         $extraWorks = $project->extraWorks()->with('addedBy')->get();
-        $payments = $project->payments()->orderBy('created_at', 'desc')->get();
-
-
-        if ($project->progress >= 100 && $remainingBalance <= 0) {
-            if ($project->status !== 'completed') {
-                $project->update(['status' => 'completed']);
-            }
-        }
-
-        $baseContract = $project->quotation->contract_price ?? 0;
-        $extraTotal   = $project->approvedExtraWorks()->sum('amount');
-        $totalPaid    = $project->approvedPayments()->sum('amount');
-        $totalProject = $baseContract + $extraTotal;
-        $remaining    = $totalProject - $totalPaid;
+        $payments = $project->payments()
+            ->orderBy('payment_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return view('projects.show', compact(
-  'project',
- 'payments',
+            'project',
             'materials',
             'extraWorks',
-            'basePrice',
-            'extraWorkTotal',
-            'totalProjectPrice',
-            'totalPaid',
-            'remainingBalance',
-            'totalApprovedExpenses',
-            'remainingAfterExpenses',
+            'payments',
             'weatherData',
             'baseContract',
             'extraTotal',
             'totalProject',
-            'remaining',
+            'totalPaid',
+            'remainingBalance',
+            'isFullyPaid',
+            'totalApprovedExpenses',
+            'remainingAfterExpenses'
         ));
     }
 
@@ -218,10 +235,29 @@ class ProjectController extends Controller
 
         $project->users()->sync($syncData);
 
+        // ==================================================
+        // 4. AUDIT LOG
+        // ==================================================
+        audit_log(
+            'Project Updated',
+            'Updated project: ' . $project->project_name .
+            ' (ID: ' . $project->id . ')'
+        );
+        // =======================================
+        // AUDIT LOG (LEVEL 2)
+        // =======================================
+        if (!empty($validated)) {
+            audit_log(
+                'Project Updated',
+                'Updated fields: ' . implode(', ', array_keys($validated)) .
+                ' | Project: ' . $project->project_name .
+                ' (ID: ' . $project->id . ')'
+            );
+        }
 
 
         // ----------------------------------------
-        // 4. DONE
+        // 5. DONE
         // ----------------------------------------
         if (!empty($employees)) {
              return redirect()
@@ -333,5 +369,12 @@ class ProjectController extends Controller
         $extraWork->save();
 
         return back()->with('success', 'Extra work was rejected.');
+    }
+
+    public function getIsFullyPaidAttribute()
+    {
+        return $this->approvedPayments()->sum('amount') >=
+            (($this->quotation->contract_price ?? 0) +
+                $this->approvedExtraWorks()->sum('amount'));
     }
 }

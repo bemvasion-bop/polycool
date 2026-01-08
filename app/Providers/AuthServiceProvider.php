@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Models\Quotation;
@@ -11,6 +11,7 @@ use App\Policies\PaymentPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\QuotationPolicy;
 use App\Policies\AttendancePolicy;
+use App\Policies\ExpensePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -21,6 +22,7 @@ class AuthServiceProvider extends ServiceProvider
         Quotation::class    => QuotationPolicy::class,
         AttendanceLog::class => AttendancePolicy::class,
         Payment::class => PaymentPolicy::class,
+        Expense::class => ExpensePolicy::class,
 
     ];
 

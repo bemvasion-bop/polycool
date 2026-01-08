@@ -22,7 +22,8 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .polysync-bg {
@@ -175,156 +176,54 @@
     {{-- SIDEBAR --}}
     <aside class="sidebar-container">
 
+        {{-- LOGO --}}
         <div class="flex items-center gap-2 mb-8">
             <img src="/logo.png" class="h-8">
             <span class="text-lg font-semibold">PolySync</span>
         </div>
 
-        <div class="menu-section">Main</div>
-        <a href="{{ route('dashboard') }}">
-            <div class="menu-item {{ request()->routeIs('dashboard') ? 'menu-active' : '' }}">
-                <i data-lucide="layout-dashboard" class="menu-icon"></i> Dashboard
-            </div>
-        </a>
+        {{-- ROLE-BASED SIDEBAR --}}
+        @switch(auth()->user()->system_role)
+            @case('owner')
+                @include('layouts.sidebar.owner')
+                @break
 
-        <div class="menu-section">Management</div>
-        @if(role('owner') || role('manager'))
-        <a href="{{ route('projects.index') }}">
-            <div class="menu-item {{ request()->routeIs('projects.*') ? 'menu-active' : '' }}">
-                <i data-lucide="folder-kanban" class="menu-icon"></i> Projects
-            </div>
-        </a>
-        @endif
+            @case('manager')
+                @include('layouts.sidebar.manager')
+                @break
 
-        @if(role('owner'))
-        <a href="{{ route('quotations.index') }}">
-            <div class="menu-item {{ request()->routeIs('quotations.*') ? 'menu-active' : '' }}">
-                <i data-lucide="file-text" class="menu-icon"></i> Quotations
-            </div>
-        </a>
-        <a href="{{ route('clients.index') }}">
-            <div class="menu-item {{ request()->routeIs('clients.*') ? 'menu-active' : '' }}">
-                <i data-lucide="users" class="menu-icon"></i> Clients
-            </div>
-        </a>
-        <a href="{{ route('employees.index') }}">
-            <div class="menu-item {{ request()->routeIs('employees.*') ? 'menu-active' : '' }}">
-                <i data-lucide="badge-check" class="menu-icon"></i> Employees
-            </div>
-        </a>
-        @endif
+            @case('employee')
+                @include('layouts.sidebar.employee')
+                @break
 
-        <div class="menu-section">Finance</div>
-        @if(role('owner') || role('accounting'))
-        <a href="{{ route('payroll.index') }}">
-            <div class="menu-item {{ request()->routeIs('payroll.*') ? 'menu-active' : '' }}">
-                <i data-lucide="wallet" class="menu-icon"></i> Payroll
-            </div>
-        </a>
-        <a href="{{ route('cashadvance.index') }}">
-            <div class="menu-item {{ request()->routeIs('cashadvance.*') ? 'menu-active' : '' }}">
-                <i data-lucide="coins" class="menu-icon"></i> Cash Advances
-            </div>
-        </a>
-        <a href="{{ route('expenses.index') }}">
-            <div class="menu-item {{ request()->routeIs('expenses.*') ? 'menu-active' : '' }}">
-                <i data-lucide="receipt" class="menu-icon"></i> Expenses
-            </div>
-        </a>
-        <a href="{{ route('payments.index') }}">
-            <div class="menu-item {{ request()->routeIs('payments.*') ? 'menu-active' : '' }}">
-                <i data-lucide="credit-card" class="menu-icon"></i> Payments
-            </div>
-        </a>
-        @endif
+            @case('accounting')
+                @include('layouts.sidebar.accounting')
+                @break
 
-        <div class="menu-section">Operations</div>
-        @if(role('owner'))
-        <a href="{{ route('suppliers.index') }}">
-            <div class="menu-item {{ request()->routeIs('suppliers.*') ? 'menu-active' : '' }}">
-                <i data-lucide="truck" class="menu-icon"></i> Suppliers
-            </div>
-        </a>
-        <a href="{{ route('materials.index') }}">
-            <div class="menu-item {{ request()->routeIs('materials.*') ? 'menu-active' : '' }}">
-                <i data-lucide="boxes" class="menu-icon"></i> Materials
-            </div>
-        </a>
-        @endif
+            @case('audit')
+                @include('layouts.sidebar.audit')
+                @break
+        @endswitch
 
-        <div class="menu-section">Attendance</div>
-        {{-- Attendance Manager + QR Scanner (Owner & Manager only) --}}
-        @if(in_array(auth()->user()->system_role, ['owner','manager']))
-            <li class="{{ request()->routeIs('attendance.index') ? 'active' : '' }}">
-                <a href="{{ route('attendance.index') }}">Attendance Manager</a>
-            </li>
-
-            <li class="{{ request()->routeIs('qrscanner') ? 'active' : '' }}">
-                <a href="{{ route('qrscanner') }}">QR Scanner</a>
-            </li>
-        @endif
-
-        {{-- 🌩️ SYNC TO CLOUD BUTTON — OWNER ONLY --}}
-        @if(role('owner'))
-        <form action="{{ route('sync.all') }}" method="POST" style="width:100%;">
-            @csrf
-            <button type="submit" class="w-full text-white bg-purple-600 hover:bg-purple-700
-                font-semibold px-4 py-3 rounded-xl transition">
-                <i class="icon-cloud"></i> Sync to Cloud
-            </button>
-        </form>
-        @endif
-
-
-
-        {{-- =========================
-            EMPLOYEE SIDEBAR
-        ========================= --}}
-
-            @if(auth()->user()->system_role === 'employee')
-
-            <span class="px-4 text-xs uppercase text-gray-400 tracking-wider mt-6 block">
-                Attendance
-            </span>
-
-            {{-- My Attendance --}}
-            <a href="{{ route('employee.attendance') }}"
-            class="flex gap-3 items-center px-4 py-3 hover:bg-white/20 rounded-xl">
-                <i class="fa-solid fa-calendar-check text-indigo-500"></i>
-                My Attendance
-            </a>
-
-            {{-- QR Code --}}
-            <a href="{{ route('attendance.myQR') }}"
-            class="flex gap-3 items-center px-4 py-3 mt-1 hover:bg-white/20 rounded-xl">
-                <i class="fa-solid fa-qrcode text-indigo-500"></i>
-                Show QR Code
-            </a>
-
-            {{-- Profile --}}
-            <a href="{{ route('employee.profile') }}"
-            class="flex gap-3 items-center px-4 py-3 mt-1 hover:bg-white/20 rounded-xl">
-                <i class="fa-solid fa-user-gear text-indigo-500"></i>
-                Profile Settings
-            </a>
-
-        @endif
-
-
-
-
-
-        {{-- User Info --}}
+        {{-- USER INFO (COMMON) --}}
         <div class="mt-8 border-t border-white/40 pt-4">
-            <p class="text-xs text-gray-700">{{ auth()->user()->system_role }}</p>
-            <p class="text-sm font-semibold text-gray-900">{{ auth()->user()->full_name }}</p>
+            <p class="text-xs text-gray-500 uppercase">
+                {{ auth()->user()->system_role }}
+            </p>
+            <p class="text-sm font-semibold">
+                {{ auth()->user()->full_name }}
+            </p>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button class="mt-2 text-red-500 text-sm hover:underline">Logout</button>
+                <button class="mt-2 text-red-500 text-sm hover:underline">
+                    Logout
+                </button>
             </form>
         </div>
 
     </aside>
+
+
 
     {{-- MAIN PANEL --}}
     <main class="main-panel">

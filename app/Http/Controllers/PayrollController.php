@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Attendance;
 use App\Models\PayrollRun;
 use App\Models\PayrollEntry;
+use App\Models\PayrollEmployee;
 use App\Models\CashAdvance;
 use App\Models\Project;
 use Carbon\Carbon;
@@ -227,7 +228,7 @@ class PayrollController extends Controller
     /* ============================================================
      | 6. FINALIZE PAYROLL RUN
      ============================================================ */
-    public function finalize(PayrollRun $run)
+     public function finalize(PayrollRun $run)
     {
         if ($run->status === 'finalized') {
             return back()->with('info', 'Already finalized.');
@@ -237,6 +238,11 @@ class PayrollController extends Controller
             'status' => 'finalized',
             'finalized_by' => auth()->id(),
         ]);
+
+        audit_log(
+            'Payroll Finalized',
+            'Payroll Run ID: ' . $run->id
+        );
 
         return back()->with('success', 'Payroll finalized successfully.');
     }
@@ -269,5 +275,17 @@ class PayrollController extends Controller
         }
 
         return $total;
+    }
+
+    public function employeePayslips()
+    {
+        $user = auth()->user();
+
+        $payslips = PayrollEmployee::with('payrollRun')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('employee.payslips', compact('payslips'));
     }
 }

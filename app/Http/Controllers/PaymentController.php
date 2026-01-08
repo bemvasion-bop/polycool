@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Payment;
 use App\Models\Project;
+use App\Models\PayrollRun;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -26,8 +27,12 @@ class PaymentController extends Controller
     /* ============================================================
      * STORE NEW PAYMENT (Manager, Owner, Accounting)
      * ============================================================ */
-    public function store(Request $request)
+    public function store(Request $request, Payment $payment)
     {
+
+        if (!in_array(auth()->user()->system_role, ['manager','owner'])) {
+        abort(403);
+
         $validated = $request->validate([
             'project_id'      => 'required|exists:projects,id',
             'amount'          => 'required|numeric|min:1',
@@ -51,21 +56,50 @@ class PaymentController extends Controller
 
         Payment::create($validated);
 
+        audit_log(
+        'Payment Added',
+        'Added payment ₱' . number_format($payment->amount, 2) .
+            ' to Project ID: ' . $payment->project_id
+        );
+
+        audit_log(
+            'Payment Added',
+            "Payment ID {$payment->id} added by ".auth()->user()->given_name
+        );
+
         return back()->with('success', 'Payment submitted for approval.');
     }
 
-
-
+    }
 
     /* ============================================================
      * VIEW PAYMENT DETAILS
      * ============================================================ */
     public function show($id)
     {
-        $payment = Payment::with(['project', 'addedBy', 'approvedBy'])->findOrFail($id);
+        $payment = Payment::with(['project','addedBy','approvedBy'])
+            ->findOrFail($id);
+
         return view('payments.show', compact('payment'));
     }
 
+     public function requestReissue(Payment $payment)
+    {
+        if (!in_array(auth()->user()->system_role, ['owner', 'accounting'])) {
+            abort(403);
+        }
+
+        $payment->update([
+            'status' => 'reissue_requested',
+        ]);
+
+        audit_log(
+            'Payment Re-issue Requested',
+            'Re-issue requested for payment ID: '.$payment->id
+        );
+
+        return back()->with('success', 'Re-issue requested.');
+    }
 
 
     /* ============================================================
@@ -73,23 +107,56 @@ class PaymentController extends Controller
      * ============================================================ */
     public function approve(Payment $payment)
     {
+        if (!in_array(auth()->user()->system_role, ['owner', 'accounting'])) {
+            abort(403);
+        }
+
         $payment->update([
             'status' => 'approved',
             'approved_by' => auth()->id(),
+            'approved_at' => now(),
         ]);
 
-        return back()->with('success', 'Payment approved successfully!');
+        audit_log(
+            'Payment Approved',
+            'Approved payment ID: '.$payment->id
+        );
+
+        return back()->with('success', 'Payment approved successfully.');
     }
+
 
 
     public function reject(Payment $payment)
     {
-        $payment->status = 'rejected';
-        $payment->approved_by = null; // just to be safe
-        $payment->cancel_reason = request('cancel_reason'); // optional
-        $payment->save();
+        if (!in_array(auth()->user()->system_role, ['owner', 'accounting'])) {
+            abort(403);
+        }
 
-        return redirect()->back()->with('success', 'Payment rejected.');
+        $payment->update([
+            'status' => 'rejected',
+            'approved_by' => auth()->id(),
+        ]);
+
+        audit_log(
+            'Payment Rejected',
+            'Rejected payment ID: '.$payment->id
+        );
+
+        return back()->with('success', 'Payment rejected.');
+    }
+
+
+    public function finalize(PayrollRun $run)
+    {
+        $run->update(['status' => 'finalized']);
+
+        audit_log(
+            'Payroll Finalized',
+            'Payroll run ID: ' . $run->id
+        );
+
+        return back()->with('success', 'Payroll finalized.');
     }
 
     /* ============================================================

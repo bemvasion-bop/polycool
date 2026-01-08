@@ -20,18 +20,12 @@ class AttendanceController extends Controller
     /** Employee dashboard attendance list */
     public function index()
     {
-        $user = auth()->user();
-
-        $todayLog = Attendance::where('user_id', $user->id)
-            ->whereDate('created_at', Carbon::today())
-            ->first();
-
-        $recentLogs = Attendance::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->take(10)
+        $logs = Attendance::with('project')
+            ->where('user_id', auth()->id())
+            ->orderBy('date', 'desc')
             ->get();
 
-        return view('attendance.employee.index', compact('todayLog', 'recentLogs'));
+        return view('attendance.index', compact('logs'));
     }
 
 
@@ -77,7 +71,6 @@ class AttendanceController extends Controller
     public function myQR()
     {
         $user = auth()->user();
-
         return view('attendance.my-qr', compact('user'));
     }
 
@@ -87,32 +80,32 @@ class AttendanceController extends Controller
 
     public function manage()
     {
-        // Load employees
-        $employees = \App\Models\User::whereIn('system_role', ['employee', 'manager'])
+        if (!in_array(auth()->user()->system_role, ['owner', 'manager'])) {
+            abort(403);
+        }
+
+        $employees = User::whereIn('system_role', ['employee', 'manager'])
             ->orderBy('given_name')
             ->get();
 
-        // Load all active projects
-        $projects = \App\Models\Project::orderBy('project_name')->get();
+        $projects = Project::orderBy('project_name')->get();
 
         return view('attendance.manage', compact('employees', 'projects'));
     }
+
+
     public function employeeLogs(User $user)
     {
-        $logs = Attendance::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $logs = Attendance::where('user_id', $user->id)->latest()->get();
 
-        return view('attendance.employee-logs', compact('user', 'logs'));
+        return view('attendance.manager.employee-logs', compact('user','logs'));
     }
 
     public function projectLogs(Project $project)
     {
-        $logs = Attendance::where('project_id', $project->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $logs = Attendance::where('project_id', $project->id)->latest()->get();
 
-        return view('attendance.project-logs', compact('project', 'logs'));
+        return view('attendance.manager.project-logs', compact('project','logs'));
     }
 
 
@@ -195,31 +188,57 @@ class AttendanceController extends Controller
             ], 409);
         }
 
-    /* ============================================================
-       ADMIN / MANAGER MANUAL OVERRIDE
-    ============================================================ */
 
-    public function manualTimeIn(User $user)
+    public function qrScanner()
     {
-        Attendance::create([
-            'user_id' => $user->id,
-            'time_in' => now(),
-            'status'  => 'present'
-        ]);
+        $projects = Project::with('client')->where('status','active')->get();
 
-        return back()->with('success', 'Time-in added manually.');
+        return view('attendance.scanner.index', compact('projects'));
     }
 
-    public function manualTimeOut(User $user)
-    {
-        $log = Attendance::where('user_id', $user->id)
-            ->whereNull('time_out')
-            ->first();
 
-        if ($log) {
-            $log->update(['time_out' => now()]);
+
+
+    public function byEmployee(User $user)
+    {
+        if (!in_array(auth()->user()->system_role, ['owner', 'manager'])) {
+            abort(403);
         }
 
-        return back()->with('success', 'Time-out added manually.');
+        $logs = Attendance::with('project')
+            ->where('user_id', $user->id)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        return view('attendance.employee-logs', compact('user', 'logs'));
     }
+
+    public function byProject(Project $project)
+    {
+        if (!in_array(auth()->user()->system_role, ['owner', 'manager'])) {
+            abort(403);
+        }
+
+        $logs = Attendance::with('user')
+            ->where('project_id', $project->id)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        return view('attendance.project-logs', compact('project', 'logs'));
+    }
+
+
+    public function overview()
+    {
+        if (auth()->user()->system_role !== 'owner') {
+            abort(403);
+        }
+
+        $logs = Attendance::with(['user', 'project'])
+            ->orderBy('date', 'desc')
+            ->get();
+
+        return view('attendance.overview', compact('logs'));
+    }
+
 }
