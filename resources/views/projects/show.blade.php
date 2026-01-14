@@ -939,7 +939,7 @@
                                 @endif
                             </td>
 
-                            {
+
 
 
                             {{-- ACTIONS --}}
