@@ -1,29 +1,120 @@
 @extends('layouts.app')
 
 @section('page-header')
-    {{-- 🟦 iOS Back Button --}}
+    {{-- 🟦 iOS Back Button
     <a href="{{ route('quotations.index') }}" class="ios-back-btn inline-flex items-center gap-1 mb-4">
         <i data-lucide="chevron-left" class="w-4 h-4"></i>
         <span>Back</span>
     </a>
 
+    --}}
+
     <h2 class="text-3xl font-semibold text-gray-900 tracking-tight">Edit Quotation</h2>
 
     <style>
-        .ios-back-btn {
-            padding: 8px 16px;
-            border-radius: 14px;
-            border: 1px solid rgba(255,255,255,0.55);
-            background: rgba(255,255,255,0.45);
-            backdrop-filter: blur(12px);
-            transition: .2s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        }
-        .ios-back-btn:hover {
-            background: rgba(255,255,255,0.85);
-            transform: translateY(-1px);
-        }
-    </style>
+:root {
+    --ps-primary: linear-gradient(135deg,#6366f1,#8b5cf6);
+    --ps-glass-bg: rgba(255,255,255,0.6);
+    --ps-border: rgba(255,255,255,0.55);
+    --ps-radius: 22px;
+}
+
+/* ================= BACK BUTTON ================= */
+.ios-back-btn {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--ps-glass-bg);
+    border: 1px solid var(--ps-border);
+    backdrop-filter: blur(12px);
+    font-weight: 500;
+    box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    transition: .2s ease;
+}
+.ios-back-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255,255,255,.8);
+}
+
+/* ================= GLASS CARD ================= */
+.glass-card {
+    background: var(--ps-glass-bg);
+    border-radius: var(--ps-radius);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--ps-border);
+    box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    padding: 32px;
+    margin-bottom: 32px;
+}
+
+/* ================= INPUTS ================= */
+.glass-input {
+    background: rgba(255,255,255,.7);
+    border: 1px solid rgba(0,0,0,.08);
+    padding: 12px 16px;
+    border-radius: 14px;
+    width: 100%;
+    transition: .2s ease;
+}
+.glass-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.25);
+}
+
+/* ================= TABLE ================= */
+.soft-table {
+    border-radius: 18px;
+    overflow: hidden;
+}
+.soft-table th {
+    background: rgba(99,102,241,.08);
+    font-weight: 600;
+}
+.soft-table th, .soft-table td {
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 12px;
+}
+
+/* ================= BUTTONS ================= */
+.ps-btn {
+    padding: 10px 20px;
+    border-radius: 14px;
+    font-weight: 600;
+    transition: .2s ease;
+}
+.ps-btn-primary {
+    background: var(--ps-primary);
+    color: white;
+}
+.ps-btn-primary:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+}
+.ps-btn-outline {
+    background: rgba(255,255,255,.7);
+    border: 1px solid var(--ps-border);
+}
+
+/* ================= MODAL ================= */
+.modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+.modal-box {
+    background: white;
+    border-radius: 24px;
+    padding: 28px;
+    width: 380px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.18);
+}
+</style>
+
 @endsection
 
 

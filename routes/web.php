@@ -55,6 +55,8 @@ Auth::routes();
 Route::get('/', fn() => redirect()->route('login'))->name('home');
 
 
+
+
 /*
 |--------------------------------------------------------------------------
 | 🧭 DASHBOARD REDIRECT BASED ON ROLE
@@ -72,6 +74,16 @@ Route::middleware('auth')->get('/dashboard', function () {
 })->name('dashboard');
 
 
+Route::middleware(['auth'])->group(function () {
+
+    Route::get('/profile', [EmployeeController::class, 'profile'])
+        ->name('profile');
+
+    Route::post('/profile/update', [EmployeeController::class, 'updateProfile'])
+        ->name('profile.update');
+
+
+});
 /*
 |--------------------------------------------------------------------------
 | 🟣 OFFLINE SYNC API
@@ -82,6 +94,7 @@ Route::post('/offline-sync', [\App\Http\Controllers\OfflineSyncController::class
     ->middleware('auth')
     ->name('offline.sync');
 
+
 /*
 |--------------------------------------------------------------------------
 | 👑 OWNER ONLY
@@ -89,8 +102,11 @@ Route::post('/offline-sync', [\App\Http\Controllers\OfflineSyncController::class
 */
 Route::middleware(['auth', 'role:owner'])->group(function () {
 
-    Route::get('/owner/dashboard', [DashboardController::class, 'ownerDashboard'])
+    Route::get('/owner/dashboard', [DashboardController::class, 'OwnerDashboard'])
         ->name('owner.dashboard');
+
+    Route::get('/dashboard/kpi', [DashboardController::class, 'kpi'])
+        ->name('owner.dashboard.kpi');
 
     Route::resource('employees', EmployeeController::class);
     Route::resource('clients', ClientController::class);
@@ -133,6 +149,25 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
 
     Route::get('/projects/{project}/audit/pdf', [ProjectController::class, 'generateAuditPDF'])
     ->name('projects.audit.pdf');
+
+
+
+
+});
+
+
+
+   /*
+    |--------------------------------------------------------------------------
+    | 👁️ QUOTATIONS – READ ONLY (OWNER / MANAGER / ACCOUNTING / AUDIT)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware(['auth', 'role:owner,manager,accounting,audit'])->group(function () {
+        Route::get('/quotations', [QuotationController::class, 'index'])
+            ->name('quotations.index');
+
+        Route::get('/quotations/{quotation}', [QuotationController::class, 'show'])
+            ->name('quotations.show');
 });
 
 
@@ -184,17 +219,12 @@ Route::middleware(['auth', 'role:employee'])->group(function () {
     Route::get('/attendance/my-qr', [AttendanceController::class, 'myQR'])
         ->name('attendance.myqr');
 
-    // 🔹 Profile Settings View
-    Route::get('/employee/profile', [DashboardController::class, 'profile'])
-        ->name('employee.profile');
+    Route::get('/employee/dashboard',[DashboardController::class, 'employeeDashboard'])
+        ->name('employee.dashboard');
 
-    // 🔹 Update Profile Info
-    Route::post('/employee/profile/update', [DashboardController::class, 'updateProfile'])
+
+    Route::post('/employee/profile/update',[DashboardController::class, 'updateProfile'])
         ->name('employee.profile.update');
-
-    // 🔹 Update Password
-    Route::post('/employee/profile/password', [DashboardController::class, 'updatePassword'])
-        ->name('employee.profile.password');
 
     Route::get('/employee/payslips', [PayrollController::class, 'employeePayslips'])
     ->name('employee.payslips');
@@ -258,6 +288,10 @@ Route::middleware(['auth', 'role:owner,manager'])->group(function () {
 
     Route::post('/payments', [PaymentController::class, 'store'])
         ->name('payments.store');
+
+    Route::get('/quotations/{quotation}/pdf',
+        [QuotationController::class, 'downloadPdf']
+    )->name('quotations.pdf');
 
 
 });
@@ -402,6 +436,9 @@ Route::middleware(['auth', 'role:audit'])->group(function () {
 
     Route::get('/audit/dashboard', [AuditController::class, 'dashboard'])
         ->name('audit.dashboard');
+
+    Route::get('/audit/print', [AuditController::class, 'print'])
+        ->name('audit.print');
 });
 
 

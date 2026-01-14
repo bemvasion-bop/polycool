@@ -78,16 +78,19 @@ class PayrollController extends Controller
         }
 
         /* ----------------------------------------------
-         | CASH ADVANCES (Remaining amounts)
-         ---------------------------------------------- */
-        $cashAdvances = CashAdvance::where('user_id', $employee->id)
+        | CASH ADVANCES (Remaining amounts)
+        ---------------------------------------------- */
+        $cashAdvances = CashAdvance::where('user_id', $employee->id) // ✅ FIXED
             ->where('status', 'approved')
+            ->whereBetween('request_date', [$start, $end]) // ✅ IMPORTANT
             ->get();
 
-        $remainingCA = $cashAdvances->sum(fn($ca) =>
-            max(0, $ca->amount - $ca->deducted_amount)
-        );
+        $remainingCA = $cashAdvances->sum(function ($ca) {
+            $deducted = $ca->deducted_amount ?? 0; // ✅ NULL SAFE
+            return max(0, $ca->amount - $deducted);
+        });
 
+        // Deduct only what employee can afford
         $caDeduction = min($gross, $remainingCA);
 
         $net = $gross - $caDeduction;
@@ -103,6 +106,15 @@ class PayrollController extends Controller
             'cash_advance' => $caDeduction,
             'net_pay' => $net,
         ];
+
+
+       dd([
+            'employment_type' => $employee->employment_type,
+            'gross' => $gross,
+            'days_present' => $daysPresent ?? null,
+            'start' => $start->toDateString(),
+            'end' => $end->toDateString(),
+        ]);
 
         return view('payroll.preview', compact('slip', 'start', 'end'));
     }
@@ -149,6 +161,8 @@ class PayrollController extends Controller
          ---------------------------------------------- */
         $cashAdvances = CashAdvance::where('user_id', $employee->id)
             ->where('status', 'approved')
+            ->whereDate('request_date', '<=' , $end)
+            ->orderBy('request_date')
             ->get();
 
         $remainingCA = $cashAdvances->sum(fn($ca) =>
@@ -196,12 +210,14 @@ class PayrollController extends Controller
             foreach ($cashAdvances as $ca) {
                 if ($remaining <= 0) break;
 
-                $rem = $ca->amount - $ca->deducted_amount;
+                $deducted = $ca->deducted_amount ?? 0;
+                $rem = $ca->amount - $deducted;
+
                 if ($rem <= 0) continue;
 
                 $apply = min($remaining, $rem);
 
-                $ca->deducted_amount += $apply;
+                $ca->deducted_amount = $deducted + $apply;
 
                 if ($ca->deducted_amount >= $ca->amount) {
                     $ca->status = 'settled';

@@ -84,7 +84,7 @@
                 @case('completed') <span class="px-3 py-1 bg-green-600 text-white rounded">Completed</span> @break
             @endswitch
 
-            @if($project->is_fully_paid)
+            @if($isFullyPaid)
                 <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700">
                     ✔ Fully Paid
                 </span>
@@ -100,7 +100,7 @@
         <hr class="my-4">
 
         <p><strong>Location:</strong> {{ $project->location }}</p>
-        <p><strong>Total Price:</strong> ₱{{ number_format($project->total_price, 2) }}</p>
+        <p><strong>Total Price:</strong> ₱{{ number_format($totalProject, 2) }}</p>
         <p><strong>Start Date:</strong> {{ $project->start_date ?? 'Not set' }}</p>
         <p><strong>End Date:</strong> {{ $project->end_date ?? 'Not set' }}</p>
 
@@ -157,22 +157,46 @@
             {{-- Progress Bar --}}
             <div class="w-full bg-gray-200 rounded-full h-4 mb-3">
                 <div class="bg-green-500 h-4 rounded-full"
-                    style="width: {{ $project->bdft_progress }}%;"></div>
+                    style="width: {{ $project->progress }}%;"></div>
             </div>
 
             <p class="text-sm mb-3">
-                <strong>{{ $project->bdft_progress }}%</strong> completed
+                <strong>{{ $project->progress }}%</strong> completed
             </p>
 
             {{-- Add Progress Form --}}
-            <form action="{{ route('projects.progress.store', $project->id) }}" method="POST" class="flex flex-wrap gap-3">
+            @if($project->users->count() === 0)
+
+            <div class="p-4 rounded-lg bg-yellow-100 text-yellow-900 text-sm">
+                ⚠️ You must assign at least one employee to this project before adding work logs.
+            </div>
+
+        @else
+
+            <form action="{{ route('projects.progress.store', $project->id) }}"
+                method="POST"
+                class="flex flex-wrap gap-3">
                 @csrf
-                <input type="date" name="log_date" required class="border rounded-lg p-2">
-                <input type="number" step="0.01" name="bdft_completed" required placeholder="Completed bd.ft"
-                    class="border rounded-lg p-2" style="width: 160px;">
-                <input type="text" name="notes" placeholder="Notes (optional)" class="border rounded-lg p-2 flex-1">
-                <button class="bg-indigo-600 text-white px-3 py-1 rounded-lg">Add Log</button>
+
+                <input type="date" name="log_date" required
+                    class="border rounded-lg p-2">
+
+                <input type="number" step="0.01" name="bdft_completed"
+                    required
+                    placeholder="Completed bd.ft"
+                    class="border rounded-lg p-2"
+                    style="width: 160px;">
+
+                <input type="text" name="notes"
+                    placeholder="Notes (optional)"
+                    class="border rounded-lg p-2 flex-1">
+
+                <button class="bg-indigo-600 text-white px-3 py-1 rounded-lg">
+                    Add Log
+                </button>
             </form>
+
+        @endif
 
 
             {{-- ================================ --}}
@@ -189,7 +213,7 @@
                     <div>
                         <p class="text-gray-600">Contract Price</p>
                         <p class="font-semibold text-green-700">
-                            ₱{{ number_format($project->total_price, 2) }}
+                            ₱{{ number_format($totalProject, 2) }}
                         </p>
                     </div>
 
@@ -379,26 +403,6 @@
         {{-- ================================ --}}
         <h3 class="text-xl font-semibold mt-10 mb-3">Payment Summary</h3>
 
-        @php
-            // Base Contract Price (from quotation)
-            $baseContract = $quotation->contract_price ?? 0;
-
-            // Total Extra Work Approved
-            $extraTotal = $project->extraWorks()
-                ->where('status', 'approved')
-                ->sum('amount');
-
-            // Updated Total Project Price
-            $totalProject = $baseContract + $extraTotal;
-
-            // Total Approved Payments
-            $totalPaid = $project->payments()
-                ->where('status', 'approved')
-                ->sum('amount');
-
-            // Remaining Balance
-            $remaining = $totalProject - $totalPaid;
-        @endphp
 
         <div class="bg-white shadow rounded-lg p-6 space-y-1">
 
@@ -422,8 +426,9 @@
 
             <p class="text-purple-700 font-semibold text-lg">
                 <strong>Remaining Balance:</strong>
-                ₱{{ number_format($remaining, 2) }}
+                ₱{{ number_format($remainingBalance, 2) }}
             </p>
+
 
 
             {{-- PRINT PAYMENT SUMMARY PDF BUTTON
@@ -493,7 +498,7 @@
                                 <span class="text-yellow-600 font-medium">Pending</span>
                             @elseif($payment->status === 'rejected')
                                 <span class="text-red-600 font-medium">Rejected</span>
-                            @elseif(in_array($payment->status, ['reissued','reversed']))
+                            @elseif(in_array($payment->status, ['reversed']))
                                 <span class="text-red-700 font-medium">Reversed</span>
                             @else
                                 <span class="text-gray-500 italic">Downpayment</span>
@@ -506,19 +511,27 @@
                         </td>
 
                         {{-- Notes --}}
-                        <td class="p-3 border">
-                            {{ $payment->notes ?? '—' }}
+                        <td class="p-3 border text-sm">
+                            {{-- Original notes --}}
+                            <p>{{ $payment->notes ?? '—' }}</p>
+
+                            {{-- Re-issue correction reason --}}
+                            @if($payment->correction_reason)
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <strong>Correction:</strong> {{ $payment->correction_reason }}
+                                </p>
+                            @endif
                         </td>
 
                         {{-- Added By --}}
                         <td class="p-3 border text-sm text-gray-700">
                             {{-- 1) If this payment was re-issued, show the manager who corrected it --}}
                             @if($payment->corrected_by && $payment->correctedBy)
-                                {{ $payment->correctedBy->user->given_name ?? 'System'}}
+                                {{ $payment->correctedBy->given_name ?? 'System' }}
 
                             {{-- 2) Else if it has an added_by (manual entry by owner/accounting) --}}
                             @elseif($payment->added_by && $payment->addedBy)
-                                {{ $payment->addedBy->user->given_name ?? 'System' }}
+                                {{ $payment->addedBy->given_name ?? 'System' }}
 
 
                             {{-- 3) Else if this is the quotation downpayment (auto-imported) --}}
@@ -560,12 +573,12 @@
 
                                 <form action="{{ route('payments.cancel',$payment->id) }}" method="POST" class="inline">
                                     @csrf
-                                    <button class="text-red-600 hover:underline text-sm">Cancel & Re-Issue</button>
-                                </form>
+                                    <button class="text-red-600 hover:underline text-sm">Cancel (Mark as Reversed)</button>
+
 
                             {{-- 🔵 Reversed (Manager Only) → Re-Issue Modal --}}
                             @elseif($payment->status === 'reversed'
-                                && in_array(auth()->user()->system_role, ['manager','owner']))
+                                 && auth()->user()->system_role === 'manager')
 
 
                                 <button onclick="showReIssueModal({{ $payment->id }})"
@@ -675,9 +688,10 @@
 
                     <label class="block text-sm font-medium">Payment Method</label>
                     <select name="payment_method" class="w-full border rounded px-3 py-2 mb-4" required>
-                        <option value="Cash">Cash</option>
-                        <option value="GCash">GCash</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="gcash">GCash</option>
+                        <option value="bank">Bank</option>
+                        <option value="cheque">Cheque</option>
                     </select>
 
                     <label class="block text-sm font-medium">Payment Date</label>
@@ -810,11 +824,12 @@
                     <tr>
                         <th class="p-3 border">Type</th>
                         <th class="p-3 border">Details</th>
+                        <th class="p-3 border">Status</th>
                         <th class="p-3 border">Cost</th>
                         <th class="p-3 border">Date</th>
                         <th class="p-3 border">Added By</th>
                         <th class="p-3 border">Receipt</th>
-                        <th class="p-3 border">Status</th>
+
                         <th class="px-3 py-2 text-sm text-center">Actions</th>
 
                     </tr>
@@ -867,6 +882,30 @@
                                 @endif
                             </td>
 
+                            {{-- STATUS --}}
+                            <td class="p-3 border">
+                                @if($expense->status == 'pending')
+                                    <span class="px-3 py-1 bg-yellow-400 text-black rounded text-xs">Pending</span>
+
+                                @elseif($expense->status == 'approved')
+                                    <span class="px-3 py-1 bg-green-500 text-white rounded text-xs">Approved</span>
+
+                                @elseif($expense->status == 'cancelled')
+                                    <span class="px-3 py-1 bg-red-600 text-white rounded text-xs">Cancelled</span>
+
+                                @elseif($expense->status == 'reversed')
+                                    <span class="px-3 py-1 bg-purple-600 text-white rounded text-xs">Rever</span>
+
+                                @elseif($expense->status == 'revised')
+                                    <span class="px-3 py-1 bg-blue-600 text-white rounded text-xs">Corrected</span>
+
+                                @else
+                                    <span class="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs">
+                                        {{ ucfirst($expense->status ?? '—') }}
+                                    </span>
+                                @endif
+                            </td>
+
 
                             {{-- COST CALC --}}
                             <td class="p-3 border">
@@ -900,29 +939,7 @@
                                 @endif
                             </td>
 
-                            {{-- STATUS --}}
-                            <td class="p-3 border">
-                                @if($expense->status == 'pending')
-                                    <span class="px-3 py-1 bg-yellow-400 text-black rounded text-xs">Pending</span>
-
-                                @elseif($expense->status == 'approved')
-                                    <span class="px-3 py-1 bg-green-500 text-white rounded text-xs">Approved</span>
-
-                                @elseif($expense->status == 'cancelled')
-                                    <span class="px-3 py-1 bg-red-600 text-white rounded text-xs">Cancelled</span>
-
-                                @elseif($expense->status == 'reversed')
-                                    <span class="px-3 py-1 bg-purple-600 text-white rounded text-xs">Reissued</span>
-
-                                @elseif($expense->status == 'revised')
-                                    <span class="px-3 py-1 bg-blue-600 text-white rounded text-xs">Corrected</span>
-
-                                @else
-                                    <span class="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs">
-                                        {{ ucfirst($expense->status ?? '—') }}
-                                    </span>
-                                @endif
-                            </td>
+                            {
 
 
                             {{-- ACTIONS --}}
@@ -1396,9 +1413,6 @@
         document.getElementById('adjustQtyModal').classList.add('hidden');
     }
 </script>
-
-
-
 
 
 @endsection

@@ -26,11 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->foreignId('added_by')
-                ->nullable()
-                ->after('status')
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->dropConstrainedForeignId('added_by');
         });
     }
 };

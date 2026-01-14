@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class EmployeeController extends Controller
 
     public function create()
     {
-        
+
         return view('employees.create');
     }
 
@@ -48,7 +49,7 @@ class EmployeeController extends Controller
             'employment_type'  => 'required|in:field_worker,office_staff',
 
             'employee_status'  => 'required|in:active,inactive',
-            'password'         => 'required|confirmed|min:6',
+            'password'         => 'required|confirmed|min:12',
         ]);
 
         // Create the user
@@ -83,6 +84,16 @@ class EmployeeController extends Controller
             ->route('employees.index')
             ->with('success', 'Employee created successfully!');
     }
+
+
+
+    public function profile()
+    {
+        $user = Auth::user();
+
+        return view('employee.profile-settings', compact('user'));
+    }
+
 
 
     public function edit(User $employee)
@@ -141,7 +152,7 @@ class EmployeeController extends Controller
     }
 
     public function destroy(User $employee)
-    {   
+    {
         if ($employee->system_role === 'owner') {
             abort(403, 'System Administrator cannot be modified.');
         }
@@ -151,4 +162,26 @@ class EmployeeController extends Controller
         return redirect()->route('employees.index')
             ->with('success', 'Employee deleted successfully!');
     }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        // 🔐 POLICY CHECK (THIS LINE CAUSES THE 403)
+        $this->authorize('update', $user);
+
+        $request->validate([
+            'password' => 'nullable|confirmed|min:6',
+        ]);
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+            $user->save();
+        }
+
+        dd(auth()->user()->system_role, auth()->user()->id);
+
+        return back()->with('success', 'Password updated successfully.');
+    }
+
 }

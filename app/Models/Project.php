@@ -52,7 +52,7 @@ class Project extends Model
 
     public function payments()
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(Payment::class, 'project_id');
     }
 
     public function expenses()
@@ -251,7 +251,8 @@ class Project extends Model
 
     public function approvedPayments()
     {
-        return $this->payments()->where('status', 'approved');
+        return $this->payments()
+            ->where('status', 'approved');
     }
 
 
@@ -269,6 +270,29 @@ class Project extends Model
         ->exists();
     }
 
+    public function isWorkComplete()
+    {
+        $requiredBdft = $this->quotation->total_bdft ?? 0;
+        $loggedBdft   = $this->progressLogs()->sum('bdft_completed');
+
+        return $loggedBdft >= $requiredBdft && $requiredBdft > 0;
+    }
+
+    public function isFullyPaid()
+    {
+        $totalProject =
+            ($this->quotation->contract_price ?? 0) +
+            $this->approvedExtraWorks()->sum('amount');
+
+        $paid = $this->approvedPayments()->sum('amount');
+
+        return $paid >= $totalProject;
+    }
+
+    public function canBeCompleted()
+    {
+        return $this->isFullyPaid() && $this->isWorkComplete();
+    }
 
 
 

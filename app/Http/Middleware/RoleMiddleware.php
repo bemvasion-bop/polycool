@@ -10,17 +10,14 @@ class RoleMiddleware
     /**
      * Handle an incoming request.
      */
-    public function handle($request, Closure $next, ...$roles)
+    public function handle(Request $request, Closure $next, ...$roles)
     {
-        $user = auth()->user();
-
-        if (!$user) {
-            abort(403, 'Unauthorized');
+        if (!auth()->check()) {
+            abort(403);
         }
 
-        // NEW: Use system_role instead of role
-        if (!in_array($user->system_role, $roles)) {
-            abort(403, 'Unauthorized');
+        if (!in_array(auth()->user()->system_role, $roles)) {
+            abort(403);
         }
 
         return $next($request);

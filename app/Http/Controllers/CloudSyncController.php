@@ -18,7 +18,7 @@ class CloudSyncController extends Controller
             }
 
             foreach ($pending as $client) {
-                DB::connection('mysql_cloud')
+                DB::connection('cloud')
                     ->table('clients')
                     ->updateOrInsert(
                         ['id' => $client->id],

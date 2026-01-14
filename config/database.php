@@ -20,7 +20,11 @@ return [
 
     'connections' => [
 
-        // LOCAL DATABASE (main working DB)
+        /*
+        |----------------------------------------------------------------------
+        | LOCAL DATABASE (MAIN / SOURCE OF TRUTH)
+        |----------------------------------------------------------------------
+        */
         'mysql' => [
             'driver' => 'mysql',
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -36,7 +40,11 @@ return [
             'engine' => null,
         ],
 
-        // CLOUD DATABASE (clevercloud sync target)
+        /*
+        |----------------------------------------------------------------------
+        | CLOUD DATABASE (CLEVER CLOUD – SYNC TARGET)
+        |----------------------------------------------------------------------
+        */
         'cloud' => [
             'driver' => 'mysql',
             'host' => env('CLOUD_DB_HOST'),
@@ -44,15 +52,29 @@ return [
             'database' => env('CLOUD_DB_DATABASE'),
             'username' => env('CLOUD_DB_USERNAME'),
             'password' => env('CLOUD_DB_PASSWORD'),
+
+            // IMPORTANT FOR CLEVER CLOUD
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
+
+            // ⚠️ MUST BE FALSE FOR CLOUD SYNC
             'strict' => false,
+
             'engine' => null,
+
+            // OPTIONAL BUT SAFE
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
         ],
 
-        // DEFAULT sqlite template from Laravel (unused but keep)
+        /*
+        |----------------------------------------------------------------------
+        | SQLITE (DEFAULT LARAVEL – UNUSED BUT KEEP)
+        |----------------------------------------------------------------------
+        */
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
@@ -61,7 +83,11 @@ return [
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
         ],
 
-        // Other DB Drivers (unchanged defaults)
+        /*
+        |----------------------------------------------------------------------
+        | OTHER DRIVERS (UNCHANGED)
+        |----------------------------------------------------------------------
+        */
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
@@ -89,7 +115,6 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
         ],
-
     ],
 
     /*
@@ -115,7 +140,10 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'_database_'),
+            'prefix' => env(
+                'REDIS_PREFIX',
+                Str::slug((string) env('APP_NAME', 'laravel')).'_database_'
+            ),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 
@@ -136,7 +164,5 @@ return [
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_CACHE_DB', '1'),
         ],
-
     ],
-
 ];

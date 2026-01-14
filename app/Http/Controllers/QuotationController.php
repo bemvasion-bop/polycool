@@ -273,60 +273,59 @@ class QuotationController extends Controller
      */
     public function convertToProject(Quotation $quotation)
     {
-        // 🔒 If already has a project, mark as converted & redirect
-        if ($quotation->project) {
-            if ($quotation->status !== 'converted') {
-                $quotation->update(['status' => 'converted']);
-            }
-
-            return redirect()
-                ->route('projects.show', $quotation->project->id)
-                ->with('info', 'Quotation already has a project.');
-        }
-
-
-
         DB::beginTransaction();
 
         try {
-
-            $project = Project::create([
+            // 1️⃣ GET OR CREATE PROJECT
+            $project = $quotation->project ?? Project::create([
                 'client_id'    => $quotation->client_id,
                 'quotation_id' => $quotation->id,
                 'project_name' => $quotation->project_name,
                 'location'     => $quotation->address,
-                'total_price'  => $quotation->contract_price,
                 'status'       => 'pending',
             ]);
 
-            if ($quotation->down_payment > 0) {
-                Payment::create([
-                    'project_id'      => $project->id,
-                    'amount'          => $quotation->down_payment,
-                    'payment_date'    => now(),
-                    'payment_method'  => 'cash',
-                    'notes'           => 'Auto-imported from quotation.',
-                    'submitted_by'    => auth()->id(),
-                    'status'          => 'approved',
-                    'approved_by'     => auth()->id(),
-                    'approved_at'     => now(),
-                ]);
+            // 2️⃣ AUTO-IMPORT DOWNPAYMENT (ONCE ONLY)
+            if (($quotation->down_payment ?? 0) > 0) {
+
+                // guard: prevent duplicate import
+                $exists = Payment::where('project_id', $project->id)
+                    ->where('notes', 'Auto-imported from quotation downpayment')
+                    ->exists();
+
+                if (!$exists) {
+                    $payment = Payment::create([
+                        'project_id'     => $project->id,
+                        'amount'         => $quotation->down_payment,
+                        'payment_method' => 'cash',
+                        'payment_date'   => $quotation->quotation_date ?? now(),
+                        'notes'          => 'Auto-imported from quotation downpayment',
+                        'status'         => 'approved',
+                        'submitted_by'   => $quotation->created_by ?? auth()->id(),
+                        'approved_by'    => auth()->id(),
+                    ]);
+
+                    $payment->update([
+                        'reference_number' => 'DP-' . str_pad($payment->id, 6, '0', STR_PAD_LEFT),
+                    ]);
+                }
             }
 
-            // 🔥 REAL UPDATE IN DB
+            // 3️⃣ MARK AS CONVERTED
             $quotation->update(['status' => 'converted']);
 
             DB::commit();
 
-           return redirect()
+            return redirect()
                 ->route('projects.show', $project->id)
                 ->with('success', 'Project created and quotation converted!');
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->with('error', 'Convert failed: '.$e->getMessage());
+            return back()->with('error', $e->getMessage());
         }
     }
+
 
 
 

@@ -125,6 +125,13 @@
 
 <div class="max-w-[1500px] mx-auto mt-3 space-y-6">
 
+
+
+    <p class="text-sm text-gray-500 flex items-center gap-2">
+        <span id="liveDot" class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+        Live metrics · Updated <span id="lastUpdated">just now</span>
+    </p>
+
     {{-- KPI ROW --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div class="kpi-card kpi-purple reveal">
@@ -153,7 +160,7 @@
     </div>
 
 
-    {{-- Notifications --}}
+    {{-- Notifications
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 section-gap">
         <div class="notice-card reveal">
             <i data-lucide="alert-triangle" class="text-yellow-600 w-6 h-6"></i>
@@ -174,6 +181,7 @@
         </div>
     </div>
 
+     --}}
 
     {{-- Charts --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 section-gap">
@@ -265,6 +273,30 @@ document.addEventListener("DOMContentLoaded", () => {
     revealEls.forEach(el => observer.observe(el));
 
 });
+
+</script>
+
+
+
+<script>
+setInterval(() => {
+    fetch('/owner/dashboard/kpi')
+        .then(res => res.json())
+        .then(data => {
+
+            document.querySelector('#kpi-projects').innerText =
+                data.totalProjects;
+
+            document.querySelector('#kpi-employees').innerText =
+                data.activeEmployees;
+
+            document.querySelector('#kpi-revenue').innerText =
+                '₱' + Number(data.totalRevenue).toLocaleString();
+
+            document.querySelector('#kpi-updated').innerText =
+                'Updated: ' + data.updated_at;
+        });
+}, 15000); // every 15 seconds
 </script>
 
 @endsection

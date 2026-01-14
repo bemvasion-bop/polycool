@@ -12,24 +12,27 @@ class Payment extends Model
     protected $fillable = [
         'project_id',
         'amount',
+        'original_amount',
         'payment_method',
+        'reference_number',
         'payment_date',
         'notes',
-        'proof_path',
         'status',
+        'reversal_of',
+        'added_by',
         'submitted_by',
         'approved_by',
-        'added_by',
-        'reversal_of',
         'corrected_by',
-        'correction_reason',
         'corrected_at',
+        'correction_reason',
+        'cancel_reason',
+        'proof_path',
+        'receipt_path',
     ];
-
 
     public function project()
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Project::class, 'project_id');
     }
 
     public function submitter()
@@ -37,24 +40,10 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'submitted_by');
     }
 
-    public function approver()
-    {
-        return $this->belongsTo(User::class, 'approved_by');
-    }
 
     public function addedBy()
     {
         return $this->belongsTo(User::class, 'added_by');
-    }
-
-    public function approvedBy()
-    {
-        return $this->belongsTo(User::class, 'approved_by');
-    }
-
-    public function originalPayment()
-    {
-        return $this->belongsTo(Payment::class, 'issued_from_payment_id');
     }
 
     public function correctedBy()
@@ -62,10 +51,9 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'corrected_by');
     }
 
-    public function submittedBy()
+    public function approvedBy()
     {
-        return $this->belongsTo(User::class, 'submitted_by');
+        return $this->belongsTo(User::class, 'approved_by');
     }
-
 
 }

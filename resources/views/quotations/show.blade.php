@@ -14,26 +14,80 @@
 @section('content')
 
 <style>
-    .ios-back-btn {
-        padding: 8px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.65);
-        background: rgba(255,255,255,0.45);
-        backdrop-filter: blur(12px);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 14px;
-        color: #1a1a1a;
-        font-weight: 500;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        transition: .2s ease;
-    }
-    .ios-back-btn:hover {
-        background: rgba(255,255,255,0.75);
-        transform: translateY(-1px);
-    }
+/* ===== POLYSYNC GLASS CARD ===== */
+.glass-card {
+    border-radius: 26px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px);
+    border: 1px solid rgba(255,255,255,0.6);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+}
+
+/* ===== POLYSYNC SECTION ===== */
+.section-divider {
+    border-top: 1px solid rgba(0,0,0,0.08);
+    margin: 28px 0;
+}
+
+/* ===== STATUS PILL ===== */
+.status-pill {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ===== PRIMARY BUTTON ===== */
+.ps-btn {
+    padding: 10px 18px;
+    border-radius: 14px;
+    font-weight: 600;
+    transition: .2s ease;
+}
+
+.ps-btn-primary {
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    color: white;
+}
+
+.ps-btn-primary:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+}
+
+.ps-btn-outline {
+    background: rgba(255,255,255,.6);
+    border: 1px solid rgba(255,255,255,.8);
+}
+
+/* ===== ACTION BAR ===== */
+.action-bar {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.15);
+    margin-bottom: 24px;
+}
+
+/* Success / Danger Polysync */
+.ps-btn-success {
+    background: linear-gradient(135deg,#22c55e,#16a34a);
+    color: white;
+}
+
+.ps-btn-danger {
+    background: rgba(239,68,68,.12);
+    color: #b91c1c;
+    border: 1px solid rgba(239,68,68,.35);
+}
+
+.ps-btn-danger:hover {
+    background: rgba(239,68,68,.18);
+}
 </style>
+
 
 @php
     $statusColors = [
@@ -42,104 +96,97 @@
         'declined'  => 'bg-red-200 text-red-800',
         'converted' => 'bg-blue-200 text-blue-800',
     ];
+
 @endphp
 
-<div class="p-10">
-    <div class="max-w-5xl mx-auto bg-white shadow rounded-lg p-8">
+
+    <div class="p-10">
+        <div class="max-w-5xl mx-auto glass-card p-10">
 
         {{-- HEADER --}}
-        <div class="flex justify-between items-start mb-6">
+        <div class="flex justify-between items-start mb-8">
             <div>
                 <p class="text-sm text-gray-500">
-                    Quotation Date: {{ \Carbon\Carbon::parse($quotation->quotation_date)->format('F d, Y') }}
+                    Quotation Date • {{ \Carbon\Carbon::parse($quotation->quotation_date)->format('F d, Y') }}
                 </p>
 
-                <p class="text-sm">
-                    Status:
-                    <span class="px-2 py-1 rounded text-sm {{ $statusColors[$quotation->status] ?? '' }}">
-                        {{ ucfirst($quotation->status) }}
-                    </span>
-                </p>
+                <span class="inline-block mt-2 status-pill {{ $statusColors[$quotation->status] }}">
+                    {{ ucfirst($quotation->status) }}
+                </span>
             </div>
 
-            <span class="px-3 py-1 rounded text-sm {{ $statusColors[$quotation->status] ?? '' }}">
-                {{ ucfirst($quotation->status) }}
-            </span>
-
-            <img src="/logo.png" alt="Logo" class="h-10">
+            <img src="/logo.png" class="h-10 opacity-80">
         </div>
+
 
         {{-- ACTION BUTTONS --}}
-        <div class="flex space-x-4 mb-6">
+        <div class="flex flex-wrap gap-3 mb-6">
 
-            @php
-                $role = auth()->user()->system_role;
-                $status = $quotation->status;
-            @endphp
+        @php
+            $role = auth()->user()->system_role;
+            $status = $quotation->status;
+        @endphp
 
-            {{-- 🔹 Pending --}}
-            @if ($status === 'pending')
+        {{-- 🔹 Pending --}}
+        @if ($status === 'pending')
 
-                {{-- Edit (Owner + Manager) --}}
-                @if(in_array($role, ['owner','manager']))
-                    <a href="{{ route('quotations.edit', $quotation->id) }}"
-                    class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                        Edit
-                    </a>
-                @endif
-
-                {{-- Approve + Decline (OWNER ONLY) --}}
-                @if($role === 'owner')
-                    <form action="{{ route('quotations.approve', $quotation->id) }}" method="POST">
-                        @csrf
-                        <button type="button"
-                            onclick="confirmApprove({{ $quotation->id }})"
-                            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                            Approve
-                        </button>
-                    </form>
-
-                    <form action="{{ route('quotations.decline', $quotation->id) }}" method="POST">
-                        @csrf
-                        <button type="button"
-                            onclick="confirmDecline({{ $quotation->id }})"
-                            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                            Decline
-                        </button>
-                    </form>
-                @endif
-
+            {{-- Edit --}}
+            @if($role === 'owner')
+                <a href="{{ route('quotations.edit', $quotation->id) }}"
+                class="ps-btn ps-btn-primary">
+                    Edit
+                </a>
             @endif
 
+            {{-- Approve --}}
+            @if($role === 'owner')
+                <button type="button"
+                    onclick="confirmApprove({{ $quotation->id }})"
+                    class="ps-btn ps-btn-success">
+                    Approve
+                </button>
 
-            {{-- 🔹 Approved --}}
-            @if ($status === 'approved')
-
-                {{-- Convert to Project (Owner + Manager) --}}
-                @if(in_array($role, ['owner','manager']))
-                    <button type="button"
-                        class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-                        onclick="confirmConvert({{ $quotation->id }})">
-                        Convert to Project
-                    </button>
-                @endif
-
+                <button type="button"
+                    onclick="confirmDecline({{ $quotation->id }})"
+                    class="ps-btn ps-btn-danger">
+                    Decline
+                </button>
             @endif
 
+        @endif
 
-            {{-- 🔹 Converted --}}
-            @if ($status === 'converted')
+        {{-- 🔹 Approved --}}
+        @if ($status === 'approved' && in_array($role,['owner','manager']))
+            <button type="button"
+                onclick="confirmConvert({{ $quotation->id }})"
+                class="ps-btn ps-btn-primary">
+                Convert to Project
+            </button>
+        @endif
 
-                {{-- View Project --}}
-                @if($quotation->project)
-                    <a href="{{ route('projects.show', $quotation->project->id) }}"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                        View Project
-                    </a>
-                @endif
+        {{-- 🔹 Converted --}}
+        @if ($status === 'converted' && $quotation->project)
+            <a href="{{ route('projects.show', $quotation->project->id) }}"
+            class="ps-btn ps-btn-primary">
+                View Project
+            </a>
+        @endif
 
-            @endif
+
+        {{-- PRINT --}}
+        <button onclick="window.print()"
+            class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+            🖨 Print
+        </button>
+
+        {{-- DOWNLOAD PDF --}}
+        <a href="{{ route('quotations.pdf', $quotation->id) }}"
+        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+            📄 Download PDF
+        </a>
+
         </div>
+
 
 
 
@@ -294,6 +341,37 @@ function confirmApprove(id) {
     });
 }
 
+</script>
+
+
+<script>
+function confirmConvert(id) {
+    Swal.fire({
+        title: "Convert to Project?",
+        text: "This will create a project and lock this quotation.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#7c3aed", // purple
+        cancelButtonColor: "#6b7280",
+        confirmButtonText: "Yes, convert",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = `/quotations/${id}/convert`;
+            form.innerHTML = `@csrf`;
+            document.body.appendChild(form);
+            form.submit();
+
+            Swal.fire({
+                title: "Converting...",
+                html: "Please wait...",
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+        }
+    });
+}
 </script>
 
 @endsection

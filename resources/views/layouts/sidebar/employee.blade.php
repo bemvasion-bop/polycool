@@ -56,7 +56,7 @@
     </div>
 </a>
 
-{{-- PROFILE --}}
+{{-- PROFILE
 <div class="menu-section">Account</div>
 
 <a href="{{ route('employee.profile') }}">
@@ -65,3 +65,5 @@
         Profile Details
     </div>
 </a>
+
+--}}

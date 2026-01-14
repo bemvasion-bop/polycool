@@ -18,6 +18,12 @@ class PayrollRun extends Model
         'finalized_by',
     ];
 
+
+    protected $casts = [
+        'period_start' => 'date',
+        'period_end'   => 'date',
+    ];
+
     public function entries()
     {
         return $this->hasMany(PayrollEntry::class);

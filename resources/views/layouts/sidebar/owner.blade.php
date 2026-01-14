@@ -74,10 +74,16 @@
     </div>
 </a>
 
-<form action="{{ route('sync.all') }}" method="POST" class="mt-6">
+
+
+{{--
+
+<form action="{{ route('sync.all') }}" method="POST">
     @csrf
     <button class="sync-btn">
         <i data-lucide="cloud-upload"></i>
         Sync to Cloud
     </button>
 </form>
+
+--}}

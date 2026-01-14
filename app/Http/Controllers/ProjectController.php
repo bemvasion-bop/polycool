@@ -35,16 +35,26 @@ class ProjectController extends Controller
      */
     public function show(Project $project, WeatherService $weatherService)
     {
+
         $project->load([
-            'client',
-            'quotation',
-            'expenses.user',
-            'expenses.material.supplier',
-            'payments.addedBy.user',
-            'payments.correctedBy.user',
-            'users',
-            'extraWorks.addedBy',
+                'client',
+                'quotation',
+
+                // Expenses
+                'expenses.user',
+                'expenses.material.supplier',
+
+                // Payments (STOP at User)
+                'payments.addedBy',
+                'payments.correctedBy',
+
+                // Project users / assignments
+                'users',
+
+                // Extra works
+                'extraworks.addedBy',
         ]);
+
 
         $materials = Material::with('supplier')->orderBy('name')->get();
 
@@ -61,24 +71,9 @@ class ProjectController extends Controller
         // AUTO-IMPORT QUOTATION DOWNPAYMENT (IDEMPOTENT)
         // ===============================
         $quotation = $project->quotation;
-        $downpayment = (float) ($quotation->downpayment_amount ?? 0);
+        $downpayment = (float) ($quotation->downpayment ?? 0);
 
-        if ($quotation && $downpayment > 0) {
-            $project->payments()->updateOrCreate(
-                [
-                    'project_id' => $project->id,
-                    'notes'      => 'Auto-imported from quotation downpayment',
-                ],
-                [
-                    'amount'         => $downpayment,
-                    'payment_method' => $quotation->downpayment_method ?? 'cash',
-                    'status'         => 'approved',
-                    'payment_date'   => $quotation->downpayment_date ?? $quotation->created_at,
-                    'added_by'       => null,
-                    'corrected_by'   => null,
-                ]
-            );
-        }
+
 
         // ===============================
         // FINANCIALS (SINGLE SOURCE OF TRUTH)
@@ -115,6 +110,8 @@ class ProjectController extends Controller
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
+
+
 
         return view('projects.show', compact(
             'project',
@@ -178,31 +175,52 @@ class ProjectController extends Controller
         }
 
         // Convert to Carbon
-        $startDate = !empty($validated['start_date']) ? Carbon::parse($validated['start_date']) : null;
-        $endDate   = !empty($validated['end_date'])   ? Carbon::parse($validated['end_date'])   : null;
+        $startDate = !empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : null;
 
-        // ----------------------------------------
-        // 2. AUTO STATUS LOGIC
-        // ----------------------------------------
-        if (!$startDate && !$endDate) {
-            $validated['status'] = 'pending';
-        } elseif ($startDate && $startDate->isFuture()) {
-            $validated['status'] = 'pending';
-        } elseif ($endDate && $endDate->isPast()) {
+        $endDate = !empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : null;
+
+        // ==================================================
+        // 2. BUSINESS-CORRECT STATUS LOGIC ✅
+        // ==================================================
+
+        // ❌ Prevent forced completion
+        if (
+            $request->status === 'completed' &&
+            !$project->canBeCompleted()
+        ) {
+            return back()->withErrors([
+                'status' =>
+                    'Project cannot be completed. Ensure work logs are complete and project is fully paid.'
+            ]);
+        }
+
+        // ✅ Auto status based on REAL CONDITIONS
+        if ($project->canBeCompleted()) {
+
             $validated['status'] = 'completed';
-        } elseif ($startDate && $startDate->isPast() && !$endDate) {
+
+        } elseif ($project->progressLogs()->count() > 0) {
+
+            // Work has started but not complete
             $validated['status'] = 'active';
-        } elseif ($startDate && $startDate->isPast() && $endDate && $endDate->isFuture()) {
-            $validated['status'] = 'active';
+
         } else {
+
+            // No work logs yet
             $validated['status'] = 'pending';
         }
 
-        // Save basic project changes
+        // ----------------------------
+        // 3. SAVE PROJECT
+        // ----------------------------
         $project->update($validated);
 
         // ==================================================
-        // 3. HANDLE WORKFORCE ASSIGNMENT
+        // 4. HANDLE WORKFORCE ASSIGNMENT
         // ==================================================
         $employees = $request->employees ?? [];
         $roles     = $request->roles ?? [];
@@ -212,18 +230,23 @@ class ProjectController extends Controller
         foreach ($employees as $empId) {
             $emp = User::find($empId);
 
-            // ❌ Office staff
+            // ❌ Office staff cannot be assigned
             if ($emp && $emp->employment_type === 'office_staff') {
-                $error = $emp->full_name . ' is office staff and cannot be assigned.';
-                return back()->with('error', $error);
+                return back()->with(
+                    'error',
+                    $emp->full_name . ' is office staff and cannot be assigned.'
+                );
             }
 
             // ❌ Already active in another project
-            if (Project::employeeHasActiveProject($empId) &&
+            if (
+                Project::employeeHasActiveProject($empId) &&
                 !$project->users()->where('user_id', $empId)->exists()
             ) {
-                $error = $emp->full_name . ' is still assigned to another ongoing project.';
-                return back()->with('error', $error);
+                return back()->with(
+                    'error',
+                    $emp->full_name . ' is still assigned to another ongoing project.'
+                );
             }
 
             $syncData[$empId] = [
@@ -232,20 +255,17 @@ class ProjectController extends Controller
             ];
         }
 
-
         $project->users()->sync($syncData);
 
         // ==================================================
-        // 4. AUDIT LOG
+        // 5. AUDIT LOG
         // ==================================================
         audit_log(
             'Project Updated',
             'Updated project: ' . $project->project_name .
             ' (ID: ' . $project->id . ')'
         );
-        // =======================================
-        // AUDIT LOG (LEVEL 2)
-        // =======================================
+
         if (!empty($validated)) {
             audit_log(
                 'Project Updated',
@@ -255,20 +275,14 @@ class ProjectController extends Controller
             );
         }
 
-
-        // ----------------------------------------
-        // 5. DONE
-        // ----------------------------------------
-        if (!empty($employees)) {
-             return redirect()
-                ->route('projects.show', $project->id)
-                ->with('success', 'Assigned workforce updated successfully!');
-        } else {
-            return redirect()
-                ->route('projects.show', $project->id)
-                ->with('success', 'Project updated successfully.');
-        }
+        // ----------------------------
+        // 6. DONE
+        // ----------------------------
+        return redirect()
+            ->route('projects.show', $project->id)
+            ->with('success', 'Project updated successfully.');
     }
+
 
     /**
      * Delete project
@@ -318,6 +332,12 @@ class ProjectController extends Controller
 
     public function storeProgress(Request $request, Project $project)
     {
+        if ($project->users()->count() === 0) {
+            return back()->withErrors([
+                'progress' => 'Cannot add work log. No workforce assigned to this project.'
+            ]);
+        }
+
         $data = $request->validate([
             'log_date'       => 'required|date',
             'bdft_completed' => 'required|numeric|min:0',

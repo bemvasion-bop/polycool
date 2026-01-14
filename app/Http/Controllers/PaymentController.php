@@ -6,6 +6,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Models\PayrollRun;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -29,9 +30,9 @@ class PaymentController extends Controller
      * ============================================================ */
     public function store(Request $request, Payment $payment)
     {
-
         if (!in_array(auth()->user()->system_role, ['manager','owner'])) {
-        abort(403);
+            abort(403);
+        }
 
         $validated = $request->validate([
             'project_id'      => 'required|exists:projects,id',
@@ -42,23 +43,21 @@ class PaymentController extends Controller
             'proof'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
-        // FIXED: correct column name is proof_path
         if ($request->hasFile('proof')) {
-            $validated['proof_path'] = $request->file('proof')->store('payment_proofs', 'public');
+            $validated['proof_path'] = $request->file('proof')
+                ->store('payment_proofs', 'public');
         }
 
-        // Do NOT save wrong field
         unset($validated['proof']);
 
-        // status + submitter
         $validated['status']       = 'pending';
         $validated['submitted_by'] = auth()->id();
 
-        Payment::create($validated);
+        $payment = Payment::create($validated);
 
         audit_log(
-        'Payment Added',
-        'Added payment ₱' . number_format($payment->amount, 2) .
+            'Payment Added',
+            'Added payment ₱' . number_format($payment->amount, 2) .
             ' to Project ID: ' . $payment->project_id
         );
 
@@ -67,10 +66,16 @@ class PaymentController extends Controller
             "Payment ID {$payment->id} added by ".auth()->user()->given_name
         );
 
+
+
         return back()->with('success', 'Payment submitted for approval.');
-    }
+
+
+
 
     }
+
+
 
     /* ============================================================
      * VIEW PAYMENT DETAILS
@@ -114,7 +119,6 @@ class PaymentController extends Controller
         $payment->update([
             'status' => 'approved',
             'approved_by' => auth()->id(),
-            'approved_at' => now(),
         ]);
 
         audit_log(
@@ -182,13 +186,15 @@ class PaymentController extends Controller
 
         // Create a replacement payment (empty)
         $newPayment = Payment::create([
-            'project_id' => $payment->project_id,
-            'amount' => 0,
-            'status' => 'pending',
-            'payment_method' => $payment->payment_method,
-            'notes' => 'Re-issue payment',
-            'payment_date' => now(),
-            'added_by' => auth()->id()
+            'project_id'       => $payment->project_id,
+            'amount'           => 0,
+            'status'           => 'pending',
+            'payment_method'   => $payment->payment_method,
+            'notes'            => 'Re-issue payment',
+            'payment_date'     => now(),
+            'submitted_by'     => auth()->id(),
+            'added_by'         => auth()->id(),
+            'reference_number' => 'REISSUE-TEMP-' . $payment->id,
         ]);
 
         return redirect()
@@ -216,32 +222,45 @@ class PaymentController extends Controller
      * ============================================================ */
     public function reissue(Request $request, Payment $payment)
     {
+        // Manager only
         if (auth()->user()->system_role !== 'manager') {
             abort(403, 'Unauthorized action');
         }
 
-        $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'notes' => 'nullable|string|max:255'
+        // Must be reversed first
+        if ($payment->status !== 'reversed') {
+            return back()->with('error', 'Only reversed payments can be re-issued.');
+        }
+
+        $validated = $request->validate([
+            'amount'            => 'required|numeric|min:1',
+            'payment_date'      => 'required|date',
+            'correction_reason' => 'required|string|max:255',
         ]);
 
-        // Preserve original amount only once
-        if (!$payment->original_amount) {
+        // Preserve original amount ONCE
+        if (is_null($payment->original_amount)) {
             $payment->original_amount = $payment->amount;
         }
 
-        $payment->amount = $request->amount;
-        $payment->notes = $request->notes ?: 'Corrected re-issue payment';
-        $payment->status = 'pending';
-        $payment->payment_date = now();
-        $payment->corrected_by = auth()->id();
-        $payment->corrected_at = now();
-        $payment->save();
+        $reference = 'REISSUE-' . $payment->id . '-' . now()->timestamp;
+
+        $payment->update([
+            'amount'           => $validated['amount'],
+            'payment_date'     => $validated['payment_date'],
+            'reference_number' => $reference,
+            'notes'            => 'Re-issued: ' . $validated['correction_reason'],
+            'status'           => 'pending',
+            'submitted_by'     => auth()->id(),
+            'approved_by'      => null,
+            'corrected_at'     => now(),
+        ]);
 
         return redirect()
             ->route('projects.show', $payment->project_id)
-            ->with('success', 'Payment re-issued successfully.');
+            ->with('success', 'Payment re-issued and submitted for approval.');
     }
+
 
 
     public function update(Request $request, Payment $payment)

@@ -24,8 +24,12 @@
     </div>
 </a>
 
-<a href="{{ route('employee.profile') }}" class="mt-6 block">
+{{--
+
+<a href="{{ route('profile') }}" class="mt-6 block">
     <div class="menu-item">
         <i data-lucide="user" class="menu-icon"></i> Profile Details
     </div>
 </a>
+
+ --}}

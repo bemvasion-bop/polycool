@@ -83,7 +83,7 @@
                     <td class="py-3">{{ $pay->project->project_name }}</td>
                     <td>{{ $pay->project->client->client_name }}</td>
                     <td>₱{{ number_format($pay->amount, 2) }}</td>
-                    <td>{{ $pay->submittedBy->name }}</td>
+                    <td>{{ optional($pay->addedBy)->given_name ?? 'System' }}</td>
                     <td class="space-x-2">
 
                         {{-- APPROVE --}}

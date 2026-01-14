@@ -40,10 +40,14 @@
     </div>
 </a>
 
+{{--
+
 <div class="menu-section">Account</div>
-<a href="{{ route('employee.profile') }}">
-    <div class="menu-item {{ request()->routeIs('employee.profile') ? 'menu-active' : '' }}">
-        <i data-lucide="user-cog" class="menu-icon"></i>
+  <a href="{{ route('profile') }}">
+    <div class="menu-item {{ request()->routeIs('profile') ? 'menu-active' : '' }}">
+            <i data-lucide="user-cog" class="menu-icon"></i>
         Profile Details
     </div>
 </a>
+
+--}}

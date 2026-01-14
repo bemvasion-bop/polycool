@@ -68,15 +68,17 @@
 
 {{-- CANCEL CONFIRMATION MODAL --}}
 <div id="cancelModal"
-     class="fixed inset-0 bg-black/30 hidden items-center justify-center backdrop-blur-sm z-50">
+     class="fixed inset-0 hidden flex items-center justify-center bg-black/30 backdrop-blur-sm z-50">
 
-    <div class="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md text-center">
+    <div class="bg-white/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl
+            max-w-md w-full text-center modal-animate">
         <h3 class="text-xl font-semibold mb-2 text-gray-800">Cancel Creating?</h3>
         <p class="text-gray-600 mb-6 text-sm">All entered data will be lost.</p>
 
-        <div class="flex justify-center gap-3">
+        <div class="flex justify-center gap-4 mt-6">
             <button onclick="closeCancelModal()"
-                class="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium">
+                class="px-6 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200
+                    text-gray-700 font-semibold transition">
                 Continue Filling
             </button>
 

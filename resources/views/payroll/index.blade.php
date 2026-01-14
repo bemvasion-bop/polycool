@@ -140,7 +140,7 @@
     <table>
         <thead>
             <tr>
-                <th>#</th>
+                <th>Payroll</th>
                 <th>Period</th>
                 <th>Type</th>
                 <th>Total Gross</th>
@@ -152,7 +152,7 @@
         </thead>
 
         <tbody id="tableBody">
-            @foreach($runs as $i => $run)
+            @foreach($runs as $run)
                 @php
                     $periodStart = \Carbon\Carbon::parse($run->period_start);
                     $periodEnd   = \Carbon\Carbon::parse($run->period_end);
@@ -165,40 +165,60 @@
                     data-gross="{{ $run->total_gross }}"
                     data-net="{{ $run->total_net }}"
                 >
-                    <td>{{ $i+1 }}</td>
+                    {{-- PAYROLL NAME (REPLACED INDEX) --}}
+                    <td class="font-medium text-gray-800">
+                        {{ ucfirst($run->payroll_type) }} Payroll
+                        <div class="text-xs text-gray-500">
+                            {{ $periodStart->format('M d') }}–{{ $periodEnd->format('M d, Y') }}
+                        </div>
+                    </td>
 
-                    <td>{{ $periodStart->format('M d') }} — {{ $periodEnd->format('M d, Y') }}</td>
+                    {{-- PERIOD --}}
+                    <td>
+                        {{ $periodStart->format('M d') }} — {{ $periodEnd->format('M d, Y') }}
+                    </td>
 
-                    <td class="capitalize">{{ $run->payroll_type }}</td>
+                    {{-- TYPE --}}
+                    <td class="capitalize">
+                        {{ $run->payroll_type }}
+                    </td>
 
-                    <td>₱{{ number_format($run->total_gross, 2) }}</td>
+                    {{-- GROSS --}}
+                    <td>
+                        ₱{{ number_format($run->total_gross, 2) }}
+                    </td>
 
-                    <td>₱{{ number_format($run->total_deductions, 2) }}</td>
+                    {{-- DEDUCTIONS --}}
+                    <td>
+                        ₱{{ number_format($run->total_deductions, 2) }}
+                    </td>
 
+                    {{-- NET --}}
                     <td class="font-semibold text-gray-900">
                         ₱{{ number_format($run->total_net, 2) }}
                     </td>
 
+                    {{-- STATUS --}}
                     <td>
                         <span class="status-pill status-{{ $run->status }}">
                             {{ ucfirst($run->status) }}
                         </span>
                     </td>
 
+                    {{-- ACTIONS --}}
                     <td class="text-right">
                         <a href="{{ route('payroll.show', $run->id) }}"
-                        class="text-blue-600 hover:underline">
+                           class="text-blue-600 hover:underline">
                             View
                         </a>
                     </td>
                 </tr>
             @endforeach
-            </tbody>
+        </tbody>
 
     </table>
 
 </div>
-
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {

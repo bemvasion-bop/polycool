@@ -101,7 +101,7 @@
                     </td>
 
                     <td>{{ optional($payment->addedBy)->full_name ?? '—' }}</td>
-                    <td>{{ optional($payment->approvedBy)->full_name ?? '—' }}</td>
+                    <td>{{ optional($payment->approver)->full_name ?? '—' }}</td>
 
                     <td class="text-right">
                         <a href="{{ route('payments.show', $payment->id) }}" class="action-link">View</a>

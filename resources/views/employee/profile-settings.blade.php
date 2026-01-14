@@ -21,65 +21,61 @@
     }
 </style>
 
-<div class="glass-panel max-w-xl mx-auto space-y-10">
+<div class="glass-panel max-w-xl mx-auto">
 
-    {{-- ==================== BASIC INFO ==================== --}}
-    <form action="{{ route('employee.profile.update') }}" method="POST" class="space-y-4">
+    <form action="{{ route('profile.update') }}" method="POST" class="space-y-8">
         @csrf
 
-        <div>
-            <label class="font-semibold text-sm text-gray-700">Given Name</label>
-            <input type="text" name="given_name" value="{{ $user->given_name }}"
-                   class="w-full rounded-lg border px-3 py-2" required>
+        {{-- ================= BASIC INFO ================= --}}
+        <div class="space-y-4">
+            <div>
+                <label class="font-semibold text-sm text-gray-700">Given Name</label>
+                <input type="text" name="given_name" value="{{ $user->given_name }}"
+                       class="w-full rounded-lg border px-3 py-2" required>
+            </div>
+
+            <div>
+                <label class="font-semibold text-sm text-gray-700">Surname</label>
+                <input type="text" name="last_name" value="{{ $user->last_name }}"
+                       class="w-full rounded-lg border px-3 py-2" required>
+            </div>
+
+            <div>
+                <label class="font-semibold text-sm text-gray-700">Email</label>
+                <input type="email" name="email" value="{{ $user->email }}"
+                       class="w-full rounded-lg border px-3 py-2" required>
+            </div>
         </div>
 
-        <div>
-            <label class="font-semibold text-sm text-gray-700">Surname</label>
-            <input type="text" name="surname" value="{{ $user->surname }}"
-                   class="w-full rounded-lg border px-3 py-2" required>
-        </div>
+        <hr>
 
-        <div>
-            <label class="font-semibold text-sm text-gray-700">Email</label>
-            <input type="email" name="email" value="{{ $user->email }}"
-                   class="w-full rounded-lg border px-3 py-2" required>
-        </div>
+        {{-- ================= PASSWORD (OPTIONAL) ================= --}}
+        <div class="space-y-4">
+            <h3 class="text-lg font-semibold text-gray-800">
+                Change Password <span class="text-sm text-gray-400">(optional)</span>
+            </h3>
 
-        <button class="w-full bg-indigo-600 text-white rounded-lg py-2 font-semibold hover:bg-indigo-700">
-            Save Changes
-        </button>
-    </form>
-
-
-    {{-- ==================== PASSWORD UPDATE ==================== --}}
-    <div class="border-t"></div>
-
-    <form action="{{ route('employee.profile.password') }}" method="POST" class="space-y-4">
-        @csrf
-
-        <h3 class="text-lg font-semibold text-gray-800">Change Password</h3>
-
-        <div>
             <input type="password" name="current_password"
                    placeholder="Current Password"
-                   class="w-full rounded-lg border px-3 py-2" required>
-        </div>
+                   class="w-full rounded-lg border px-3 py-2">
 
-        <div>
             <input type="password" name="new_password"
                    placeholder="New Password"
-                   class="w-full rounded-lg border px-3 py-2" required>
-        </div>
+                   class="w-full rounded-lg border px-3 py-2">
 
-        <div>
             <input type="password" name="confirm_password"
                    placeholder="Confirm New Password"
-                   class="w-full rounded-lg border px-3 py-2" required>
+                   class="w-full rounded-lg border px-3 py-2">
         </div>
 
-        <button class="w-full bg-purple-600 text-white rounded-lg py-2 font-semibold hover:bg-purple-700">
-            Update Password
-        </button>
+        {{-- ================= SINGLE BUTTON ================= --}}
+        <button
+            type="submit"
+            class="w-full bg-gradient-to-r from-indigo-600 to-purple-600
+                text-white rounded-lg py-3 font-semibold
+                hover:opacity-90 transition">
+            Save Changes
+            </button>
     </form>
 
 </div>

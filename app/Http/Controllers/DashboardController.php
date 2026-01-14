@@ -7,6 +7,7 @@ use App\Models\PayrollRun;
 use App\Models\Project;
 use App\Models\Payment;
 use App\Models\User;
+use App\Models\Expense;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -55,57 +56,96 @@ class DashboardController extends Controller
         ));
     }
 
+    public function kpi()
+{
+    return response()->json([
+        'totalProjects'   => Project::count(),
+        'activeEmployees' => User::where('employment_type', 'field_worker')->count(),
+        'totalRevenue'    => Payment::where('status', 'approved')->sum('amount'),
+        'pendingPayments' => Payment::where('status', 'pending')->count(),
+        'pendingExpenses' => Expense::where('status', 'pending')->count(),
+        'updated_at'      => now()->toDateTimeString(),
+    ]);
+}
+
+    private function projectKPIs()
+    {
+        return [
+            'total'     => Project::count(),
+            'active'    => Project::whereIn('status', ['active', 'pending', 'on_hold'])->count(),
+            'at_risk'   => Project::whereIn('status', ['delayed', 'on_hold'])->count(),
+            'completed' => Project::where('status', 'completed')->count(),
+        ];
+    }
+
+    private function workforceKPIs()
+    {
+        return [
+            'field_workers' => User::where('employment_type', 'field_worker')->count(),
+            'employees'     => User::where('system_role', 'employee')->count(),
+        ];
+    }
+
+    private function financialKPIs()
+    {
+        return [
+            'revenue'        => Payment::where('status', 'approved')->sum('amount'),
+            'pending_payments' => Payment::where('status', 'pending')->count(),
+            'pending_expenses' => Expense::where('status', 'pending')->count(),
+        ];
+    }
+
     /* ============================================================
      * MANAGER DASHBOARD
      * ============================================================ */
     public function managerDashboard()
     {
-        // Basic metrics
-        $activeProjects    = Project::whereIn('status', ['active', 'pending', 'on_hold', 'delayed'])->count();
-        $atRiskProjects    = Project::whereIn('status', ['delayed', 'on_hold'])->count();
-        $completedProjects = Project::where('status', 'completed')->count();
+        $projects  = $this->projectKPIs();
+        $workforce = $this->workforceKPIs();
 
-        // Field workers (all employees for now)
-        $fieldWorkers = User::where('system_role', 'employee')->count();
-
-        // Project progress chart (top 8 projects by start date)
+        /* ===========================
+        | PROJECT PROGRESS (TOP 8)
+        =========================== */
         $progressProjects = Project::whereIn('status', ['active', 'pending', 'on_hold', 'delayed'])
             ->orderBy('start_date', 'asc')
             ->take(8)
             ->get();
 
-        $progressLabels = $progressProjects->pluck('project_name');
-        $progressValues = $progressProjects->map(function ($project) {
-            // uses accessor getProgressAttribute()
-            return round($project->progress ?? 0, 1);
-        });
+        $progressLabels = [];
+        $progressValues = [];
 
-        // Workforce distribution chart (top 8 projects with most workers)
-        $workforceProjects = Project::withCount('users')
-            ->whereIn('status', ['active', 'pending', 'on_hold', 'delayed'])
-            ->orderByDesc('users_count')
-            ->take(8)
-            ->get();
+        foreach ($progressProjects as $project) {
+            $progressLabels[] = $project->project_name;
+            $progressValues[] = round($project->calculateProgress(), 1);
+        }
 
-        $workforceLabels = $workforceProjects->pluck('project_name');
-        $workforceValues = $workforceProjects->pluck('users_count');
+        /* ===========================
+        | WORKFORCE ALLOCATION
+        =========================== */
+        $workforceLabels = [];
+        $workforceValues = [];
 
-        // Average progress for display
-        $averageProgress = $progressValues->count()
-            ? round($progressValues->avg(), 1)
+        foreach ($progressProjects as $project) {
+            $workforceLabels[] = $project->project_name;
+            $workforceValues[] = $project->users()->count();
+        }
+
+        $averageProgress = count($progressValues)
+            ? round(array_sum($progressValues) / count($progressValues), 1)
             : 0;
 
-        return view('dashboard.manager', compact(
-            'activeProjects',
-            'atRiskProjects',
-            'completedProjects',
-            'fieldWorkers',
-            'progressLabels',
-            'progressValues',
-            'workforceLabels',
-            'workforceValues',
-            'averageProgress'
-        ));
+        return view('dashboard.manager', [
+            'activeProjects'    => $projects['active'],
+            'atRiskProjects'    => $projects['at_risk'],
+            'completedProjects' => $projects['completed'],
+            'fieldWorkers'      => $workforce['field_workers'],
+
+            'progressLabels'    => $progressLabels,
+            'progressValues'    => $progressValues,
+            'workforceLabels'   => $workforceLabels,
+            'workforceValues'   => $workforceValues,
+            'averageProgress'   => $averageProgress,
+        ]);
     }
 
     /* ============================================================
@@ -145,7 +185,10 @@ class DashboardController extends Controller
     * ============================================================ */
     public function profile()
     {
+        // Logged-in user only (employee, manager, accounting)
         $user = auth()->user();
+        $this->authorize('view', $user);
+
         return view('employee.profile-settings', compact('user'));
     }
 
@@ -153,10 +196,11 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
+        // BASIC INFO VALIDATION
         $request->validate([
             'given_name' => 'required|string|max:255',
             'surname'    => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email,' . $user->id,
+            'email'      => 'required|email|max:255',
         ]);
 
         $user->update([
@@ -165,20 +209,41 @@ class DashboardController extends Controller
             'email'      => $request->email,
         ]);
 
-        return back()->with('success', 'Profile updated successfully!');
+        // ================= PASSWORD UPDATE (OPTIONAL) =================
+        if ($request->filled('new_password')) {
+
+            $request->validate([
+                'current_password' => 'required',
+                'new_password'     => 'min:8',
+                'confirm_password' => 'same:new_password',
+            ]);
+
+            if (!Hash::check($request->current_password, $user->password)) {
+                return back()->withErrors([
+                    'current_password' => 'Current password is incorrect.',
+                ]);
+            }
+
+            $user->update([
+                'password' => Hash::make($request->new_password),
+            ]);
+        }
+
+        return back()->with('success', 'Profile updated successfully.');
     }
 
     public function updatePassword(Request $request)
     {
         $request->validate([
-            'new_password' => 'required|min:6|confirmed'
+            'password' => 'required|min:8|confirmed',
         ]);
 
-        auth()->user()->update([
-            'password' => \Hash::make($request->new_password)
-        ]);
+        $user = auth()->user();
+        $user->password = Hash::make($request->password);
+        $user->save();
 
-        return back()->with('success', 'Password updated successfully!');
+        return back()->with('success', 'Password updated successfully.');
+
     }
 
 
@@ -252,7 +317,7 @@ class DashboardController extends Controller
         ];
 
         $pendingPaymentList = \App\Models\Payment::where('status', 'pending')
-            ->with(['project.client', 'submittedBy'])
+            ->with(['project.client', 'addedBy'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -296,38 +361,37 @@ class DashboardController extends Controller
     ]);
     }
 
-    public function syncAll()
-    {
-        $pendingClients = \App\Models\Client::where('sync_status', 'pending')->get();
-        $syncedCount = 0;
+    //public function syncAll()
+    //{
+    //    $pendingClients = \App\Models\Client::where('sync_status', 'pending')->get();
+    //    $syncedCount = 0;
 
-        foreach ($pendingClients as $client) {
-            try {
-                \DB::connection('cloud')->table('clients')->updateOrInsert(
-        ['email' => $client->email],
-                [
-                    'name' => $client->name,
-                    'contact_person' => $client->contact_person,
-                    'phone' => $client->phone,
-                    'address' => $client->address,
-                    'created_at' => $client->created_at,
-                    'updated_at' => now(),
-                ]
-            );
+    //    foreach ($pendingClients as $client) {
+    //        try {
+    //            \DB::connection('cloud')->table('clients')->updateOrInsert(
+    //    ['email' => $client->email],
+    //            [
+    //               'name' => $client->name,
+    //                'contact_person' => $client->contact_person,
+    //                'phone' => $client->phone,
+    //                'address' => $client->address,
+    //                'created_at' => $client->created_at,
+    //                'updated_at' => now(),
+    //            ]
+    //        );
 
-                $client->sync_status = 'synced';
-                $client->save();
-                $syncedCount++;
-            } catch (\Exception $e) {
-                \Log::error("Client Sync Fail: " . $e->getMessage());
-            }
-            }
+    //            $client->sync_status = 'synced';
+    //            $client->save();
+    //           $syncedCount++;
+    //        } catch (\Exception $e) {
+    //            \Log::error("Client Sync Fail: " . $e->getMessage());
+    //        }
+    //        }
 
-            return response()->json([
-                'status' => 'success',
-                'message' => "Synced {$syncedCount} clients to cloud!"
-            ]);
+    //      return response()->json([
+    //            'status' => 'success',
 
-    }
+    //        ]);
 
+//}
 }
